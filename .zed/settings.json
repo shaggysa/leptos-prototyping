@@ -1,0 +1,13 @@
+{
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "cargo": {
+          "features": ["ssr"] // Enable only the ssr feature
+          // OR
+          // "allFeatures": true   // Enable all features if you want everything enabled
+        }
+      }
+    }
+  }
+}
