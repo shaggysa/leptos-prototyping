@@ -1,6 +1,6 @@
 To run the server:
 ```
-touch accounts.db
+touch database.db
 cargo leptos watch
 ```
 
