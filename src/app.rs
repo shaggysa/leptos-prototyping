@@ -50,9 +50,31 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=|| "Page not found.".into_view()>
                     <Route path=StaticSegment("") view=HomePage/>
                     <Route path=StaticSegment("/transact") view=Transact/>
+                    <Route path=StaticSegment("/journal") view=GeneralJournal/>
                 </Routes>
             </main>
         </Router>
+    }
+}
+
+#[component]
+fn TopBar() -> impl IntoView {
+    view! {
+                    <div class="flex max-w-7xl mx-auto items-center flex-col">
+                        <div class="flex items-center justify-between px-4 py-4">
+                            <div class="flex gap-8">
+                                <a href="/transact" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                                    "Make a Transaction"
+                                </a>
+                                <a href="/" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                                    "Home"
+                                </a>
+                                <a href="/journal" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                                    "Transaction journal"
+                                </a>
+                            </div>
+                        </div>
+                    </div>
     }
 }
 
@@ -62,6 +84,7 @@ pub fn App() -> impl IntoView {
 fn HomePage() -> impl IntoView {
     view! {
         <head>
+        <TopBar/>
         <AccountList/>
         <AddAccount/>
         </head>
@@ -97,7 +120,6 @@ fn AccountList() -> impl IntoView {
                                         .map(|n| view! { <li class = "px-1 py-1 font-bold text-2xl">{n.title}"     "{format!("{}${}.{:02}", if n.balance_cents < 0 {"-"} else {""}, (n.balance_cents.abs() / 100), ((n.balance_cents).abs() % 100))}</li>})
                                         .collect_view()}
                                 </ul>
-                                <a href="/transact" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400">"make a transaction"</a>
                             </div>
                         }.into_view()
                     }
@@ -138,6 +160,7 @@ fn Transact() -> impl IntoView {
 
     view! {
         <head>
+        <TopBar/>
         <Suspense fallback=|| view! { <p>"Loading..."</p> }>
              {move || items_resource.get().map(|result| {
                  match result {
@@ -149,8 +172,7 @@ fn Transact() -> impl IntoView {
                          }
                          view! {
                              <div class="flex flex-col items-center text-center px-10 py-10">
-                             <a href = "/" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400">homepage</a>
-                             <h1 class="font-bold text-4xl">"make a transaction"</h1>
+                             <h1 class="font-bold text-4xl">"Make a transaction"</h1>
                              <p>"Please enter your values in cents"</p>
                              <br/>
                              <h2 class = "font-bold text-3xl">"Credit/Debit"</h2>
@@ -281,6 +303,62 @@ fn Transact() -> impl IntoView {
                     Err(e) => return view! {<div class="flex flex-col items-center text-center px-10 py-10"><p>"Error: "{e.to_string()}</p></div>}.into_view()
                  }
              })}
+        </Suspense>
+        </head>
+    }
+}
+
+#[component]
+#[cfg(feature = "ssr")]
+fn GeneralJournal() -> impl IntoView {
+    use crate::api::package_transactions;
+    use chrono::TimeZone;
+    let transactions_resource = Resource::new(|| (), |_| async { package_transactions().await });
+    view! {
+        <head>
+        <TopBar/>
+        <Suspense fallback=|| view! { <p>"Loading transaction history..."</p> }>
+
+            {move || transactions_resource.get().map(|transactions|{
+               match transactions {
+                   Ok(transactions) => {
+                   if transactions.is_empty() {
+                       return view! {
+                           <div class="flex flex-col items-center text-center px-10 py-10"><p>"no transactions yet"</p></div>
+                       }.into_view()
+                   } else {
+                   return view! {
+                       <div class="flex flex-col items-center text-center px-10 py-10">
+                            <h1 class="font-bold text-4xl">"Transactions"</h1>
+                            <ul>
+                                {transactions.iter().map(|packaged_transaction| {
+                                     //using utc because we can't get users' timezones without JS
+                                     view! {
+                                    <div class="flex flex-col items-center text-center px-10 py-10">
+                                        <li>
+                                            <h2 font-bold text-xl>
+                                            {chrono::Utc.timestamp(packaged_transaction.parent.created_at, 0).to_string()}":"
+                                            </h2>
+                                            <ul>
+                                                {packaged_transaction.children.iter().map(|partial_transaction| {
+                                                    view! {
+                                                    <li>{partial_transaction.account_name.clone()} " : $" {partial_transaction.balance_diff_cents.abs()} " " {if partial_transaction.balance_diff_cents < 0 {"Dr".to_string()} else {"Cr".to_string()}} </li>
+                                                    }
+                                                }).collect_view()}
+                                            </ul>
+                                        </li>
+                                    </div>
+                                    }
+                                }).collect_view()}
+                            </ul>
+                       </div>
+                   }.into_view()}},
+                   Err(e) => return view! {
+                       <div class="flex flex-col items-center text-center px-10 py-10"><p>{e.to_string()}</p></div>
+                   }.into_view(),
+               }
+            })}
+
         </Suspense>
         </head>
     }

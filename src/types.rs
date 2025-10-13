@@ -10,18 +10,19 @@ pub struct Account {
 }
 
 #[cfg(feature = "ssr")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct Transaction {
     pub id: u32,
-    pub session_id: String,
-    pub timestamp: i64,
+    // session_id is in the db entry, but I dont think it's ever necessary to return it
+    pub created_at: i64,
 }
 
 #[cfg(feature = "ssr")]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PartialTransaction {
-    pub id: u32,
-    pub session_id: u32,
+    pub transaction_id: u32,
+    pub account_id: u32,
+    pub account_name: String,
     pub balance_diff_cents: i64,
 }
 
@@ -37,4 +38,11 @@ pub struct BalanceUpdate {
 pub enum TransactionResult {
     UPDATED,
     BALANCEMISMATCH,
+}
+
+#[cfg(feature = "ssr")]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PackagedTransaction {
+    pub parent: Transaction,
+    pub children: Vec<PartialTransaction>,
 }

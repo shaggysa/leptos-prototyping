@@ -30,6 +30,9 @@ macro_rules! pull_database_and_client_info {
 }
 
 #[cfg(feature = "ssr")]
+use std::collections::HashMap;
+
+#[cfg(feature = "ssr")]
 use axum::Extension;
 
 use leptos::prelude::*;
@@ -44,7 +47,9 @@ use leptos_axum::extract;
 use tower_sessions::Session;
 
 #[cfg(feature = "ssr")]
-use crate::types::{Account, BalanceUpdate, TransactionResult};
+use crate::types::{
+    Account, BalanceUpdate, PackagedTransaction, PartialTransaction, Transaction, TransactionResult,
+};
 
 #[cfg(feature = "ssr")]
 #[server]
@@ -176,4 +181,99 @@ pub async fn transact(
         .await?;
     }
     return Ok(TransactionResult::UPDATED);
+}
+
+#[cfg(feature = "ssr")]
+pub async fn get_transaction_parents() -> Result<Vec<Transaction>, ServerFnError> {
+    pull_database_and_client_info!(pool, session_id);
+
+    let transactions: Vec<(u32, i64)> = match sqlx::query_as(
+        "SELECT id, created_at FROM transactions WHERE session_id = ? ORDER BY created_at DESC",
+    )
+    .bind(&session_id)
+    .fetch_all(&pool)
+    .await
+    {
+        Ok(s) => s,
+        Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
+    };
+
+    Ok(transactions
+        .into_iter()
+        .map(|(id, created_at)| Transaction { id, created_at })
+        .collect())
+}
+
+#[cfg(feature = "ssr")]
+pub async fn get_transaction_children(
+    transaction_id: u32,
+) -> Result<Vec<PartialTransaction>, ServerFnError> {
+    use crate::types::PartialTransaction;
+
+    pull_database_and_client_info!(pool, session_id);
+
+    let partial_transactions: Vec<(u32, i64)> = match sqlx::query_as(
+        "SELECT account_id, balance_diff_cents FROM partial_transactions WHERE id = ? ORDER by balance_diff_cents ASC",
+    )
+    .bind(&transaction_id)
+    .fetch_all(&pool)
+    .await
+    {
+        Ok(s) => s,
+        Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
+    };
+
+    let mut account_name_map: HashMap<u32, String> = HashMap::new();
+
+    for transaction in &partial_transactions {
+        let name = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT title FROM accounts WHERE session_id = ? AND id = ?",
+        )
+        .bind(&session_id)
+        .bind(transaction.0)
+        .fetch_one(&pool)
+        .await?
+        .expect("the entry to exist");
+
+        account_name_map.insert(transaction.0, name);
+    }
+
+    Ok(partial_transactions
+        .into_iter()
+        .map(|(account_id, balance_diff_cents)| PartialTransaction {
+            transaction_id: transaction_id,
+            account_id,
+            account_name: account_name_map.get(&account_id).unwrap().to_string(),
+            balance_diff_cents,
+        })
+        .collect())
+}
+
+#[cfg(feature = "ssr")]
+pub async fn package_transactions() -> Result<Vec<PackagedTransaction>, ServerFnError> {
+    let mut packaged_transactions = Vec::new();
+
+    let transaction_parents = match get_transaction_parents().await {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(ServerFnError::ServerError(format!(
+                "failed to fetch transaction parents: {}",
+                e.to_string()
+            )))
+        }
+    };
+
+    for parent in transaction_parents {
+        let children = match get_transaction_children(parent.id).await {
+            Ok(s) => s,
+            Err(e) => {
+                return Err(ServerFnError::ServerError(format!(
+                    "Unable to fetch transaction children: {} ",
+                    e.to_string()
+                )))
+            }
+        };
+        packaged_transactions.push(PackagedTransaction { parent, children });
+    }
+    Ok(packaged_transactions)
 }

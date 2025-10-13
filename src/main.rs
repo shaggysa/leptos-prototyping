@@ -49,7 +49,7 @@ async fn main() {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS partial_transactions (
                 id INTEGER NOT NULL,
-                account_id TEXT NOT NULL,
+                account_id INTEGER NOT NULL,
                 balance_diff_cents INTEGER NOT NULL
             )",
     )
