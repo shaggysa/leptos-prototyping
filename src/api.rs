@@ -28,7 +28,7 @@ macro_rules! pull_database_and_client_info {
         };
 
         let user_id = match sqlx::query_scalar::<_, Option<u32>>(
-            "SELECT 1 user_id FROM authenticated_sessions WHERE session_id = ?",
+            "SELECT user_id FROM authenticated_sessions WHERE session_id = ?",
         )
         .bind(&session_id)
         .fetch_one(&pool)
