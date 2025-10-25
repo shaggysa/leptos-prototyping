@@ -67,57 +67,57 @@ fn ClientSignUp() -> impl IntoView {
     let signup = ServerAction::<CreateAccount>::new();
 
     view! {
-        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
-            <Suspense>
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+            <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+                <Suspense>
+                            <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
 
-                            <br/>
+                                <br/>
 
-                            <ActionForm action=signup>
+                                <ActionForm action=signup>
 
-                                <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+                                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
 
-                            <input
-                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                type="text"
-                                name="username"
-                                placeholder="username"
-                                required
-                            />
-                            <br/>
-                            <input
-                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                type="password"
-                                name="password"
-                                placeholder="password"
-                                required
-                            />
-                            <br/>
-                            <input
-                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                type="password"
-                                name="confirm_password"
-                                placeholder="confirm password"
-                                required
-                            />
-                            <br/>
-                            <button class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Sign up"</button>
-                            </div>
-                            </ActionForm>
-                            <a href = "/login" class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Have an account? Sign in"</a>
-                    </div>
+                                <input
+                                    class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    type="text"
+                                    name="username"
+                                    placeholder="username"
+                                    required
+                                />
+                                <br/>
+                                <input
+                                    class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    type="password"
+                                    name="password"
+                                    placeholder="password"
+                                    required
+                                />
+                                <br/>
+                                <input
+                                    class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    type="password"
+                                    name="confirm_password"
+                                    placeholder="confirm password"
+                                    required
+                                />
+                                <br/>
+                                <button class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Sign up"</button>
+                                </div>
+                                </ActionForm>
+                                <a href = "/login" class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Have an account? Sign in"</a>
+                        </div>
 
 
-        </Suspense>
-        {move || match signup.value().get() {
-            None => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
-            Some(Ok(_)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
-            Some(Err(e)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}.into_view(),
+            </Suspense>
+            {move || match signup.value().get() {
+                None => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
+                Some(Ok(_)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
+                Some(Err(e)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}.into_view(),
+            }
+    }
+    </div>
         }
 }
-</div>
-    }}
-
 
 #[cfg(feature = "ssr")]
 #[component]
@@ -127,58 +127,58 @@ fn ClientLogin() -> impl IntoView {
     let logged_in = Resource::new(|| (), |_| async { is_logged_in().await });
 
     view! {
-        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
-        <Suspense>
-            {move || match logged_in.get() {
-                Some(Ok(_)) => {
-                    return view! {
-                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/"/></div>
-                }.into_view()},
-                Some(Err(_)) => {
-                    return view! {
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+            <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+            <Suspense>
+                {move || match logged_in.get() {
+                    Some(Ok(_)) => {
+                        return view! {
+                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/"/></div>
+                    }.into_view()},
+                    Some(Err(_)) => {
+                        return view! {
+                            <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
 
-                            <br/>
+                                <br/>
 
-                            <ActionForm action=login>
+                                <ActionForm action=login>
 
-                                <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+                                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
 
-                            <input
-                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                type="text"
-                                name="username"
-                                placeholder="username"
-                                required
-                            />
-                            <br/>
-                            <input
-                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                type="password"
-                                name="password"
-                                placeholder="password"
-                                required
-                            />
-                            <br/>
-                            <button class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Login"</button>
-                            </div>
-                            </ActionForm>
-                            <a href = "/signup" class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Don't have an account? Sign up"</a>
-                    </div>
-                }.into_view()},
-                None => return view! {
-                <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"loading..."</p></div>}.into_view(),
+                                <input
+                                    class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    type="text"
+                                    name="username"
+                                    placeholder="username"
+                                    required
+                                />
+                                <br/>
+                                <input
+                                    class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                    type="password"
+                                    name="password"
+                                    placeholder="password"
+                                    required
+                                />
+                                <br/>
+                                <button class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Login"</button>
+                                </div>
+                                </ActionForm>
+                                <a href = "/signup" class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Don't have an account? Sign up"</a>
+                        </div>
+                    }.into_view()},
+                    None => return view! {
+                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"loading..."</p></div>}.into_view(),
+                    }
                 }
+            </Suspense>
+            {move || match login.value().get() {
+                None => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
+                Some(Ok(_)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
+                Some(Err(e)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}.into_view(),
             }
-        </Suspense>
-        {move || match login.value().get() {
-            None => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
-            Some(Ok(_)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p></p></div>}.into_view(),
-            Some(Err(e)) => return view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}.into_view(),
-        }
-}
-</div>
     }
+    </div>
+        }
 }
 
 #[cfg(feature = "ssr")]
@@ -224,10 +224,11 @@ fn HomePage() -> impl IntoView {
 #[cfg(feature = "ssr")]
 #[component]
 fn AccountList() -> impl IntoView {
-    use crate::api::is_logged_in;
+    use crate::api::{is_logged_in, ShareAccount};
 
     let accounts = Resource::new(move || (), |_| async move { get_accounts().await });
     let logged_in = Resource::new(move || (), |_| async move { is_logged_in().await });
+    let share_account = ServerAction::<ShareAccount>::new();
 
     view! {
         <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
@@ -237,6 +238,7 @@ fn AccountList() -> impl IntoView {
         {move || {
             let login_state = logged_in.get();
             let accounts_state = accounts.get();
+            let share_state = share_account.value().get();
 
             match login_state {
                 None => view!{
@@ -268,12 +270,38 @@ fn AccountList() -> impl IntoView {
                                 <div class="mx-auto flex min-w-full flex-col items-center">
                                     <ul>
                                         {s.into_iter()
-                                            .map(|n| view! { <li class = "px-1 py-1 font-bold text-2xl">{n.title}"     "{format!("{}${}.{:02}", if n.balance_cents < 0 {"-"} else {""}, (n.balance_cents.abs() / 100), ((n.balance_cents).abs() % 100))}</li>})
+                                            .map(|n| view! {
+                                                <div style=move || if n.shared {
+                                                    "color: red;"
+                                                } else {
+                                                    ""
+                                                }>
+                                                <ActionForm action=share_account>
+                                                <li class = "px-1 py-1 font-bold text-2xl">
+                                                    {n.title}"     "{format!("{}${}.{:02}", if n.balance_cents < 0 {"-"} else {""}, (n.balance_cents.abs() / 100), ((n.balance_cents).abs() % 100))}
+                                                            <input
+                                                            type = "hidden"
+                                                            name = "account_id"
+                                                            value = n.id
+                                                            />
+                                                            <input
+                                                                class = "shadow appearance-none border rounded text-gray-700 leading-tight focus:outline-none focus:shadow-outline max-w-xs"
+                                                                type="text"
+                                                                name="username"
+                                                                placeholder = "username"
+                                                                required
+                                                            />
+                                                            <button class="mt-3 rounded bg-purple-900 font-bold text-white hover:bg-blue-400" type="submit">"Share"</button>
+                                                </li></ActionForm></div>})
                                             .collect_view()}
                                     </ul>
                                     <AddAccount/>
+                                    {match share_state{
+                                        None => view!{<div class="mx-auto flex min-w-full flex-col items-center"><p></p></div>}.into_view(),
+                                        Some(Ok(_)) => view!{<div class="mx-auto flex min-w-full flex-col items-center"><p></p></div>}.into_view(),
+                                        Some(Err(e)) => view!{<div class="mx-auto flex min-w-full flex-col items-center"><p>{e.to_string()}</p></div>}.into_view(),
+                                    }}
                                 </div>
-
                             }.into_view()
                         }
                     }
@@ -290,15 +318,15 @@ fn AddAccount() -> impl IntoView {
     view! {
             <div class="flex flex-col items-center text-center px-10 py-10">
                 <h1>"Create a new account"</h1>
-                <ActionForm action=add_account>
-                    <input
-                        class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        type="text"
-                        name="title"
-                        required
-                    />
-                    <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Add"</button>
-                </ActionForm>
+                    <ActionForm action=add_account>
+                        <input
+                            class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            type="text"
+                            name="title"
+                            required
+                        />
+                        <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Add"</button>
+                    </ActionForm>
             </div>
     }
 }
@@ -428,11 +456,10 @@ fn Transact() -> impl IntoView {
     }
 }
 
-
 #[component]
 #[cfg(feature = "ssr")]
 fn GeneralJournal() -> impl IntoView {
-    use crate::api::{package_transactions, is_logged_in};
+    use crate::api::{is_logged_in, package_transactions};
     use chrono::TimeZone;
     let transactions_resource = Resource::new(|| (), |_| async { package_transactions().await });
     let logged_in_resource = Resource::new(|| (), |_| async { is_logged_in().await });

@@ -24,10 +24,31 @@ async fn main() {
         .expect("the database to exist");
 
     sqlx::query(
+        "CREATE TABLE IF NOT EXISTS users (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   username TEXT NOT NULL,
+                   hash_and_salt TEXT NOT NULL
+               )",
+    )
+    .execute(&pool)
+    .await
+    .expect("to be able to create a table");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS authenticated_sessions (
+                    session_id TEXT NOT NULL,
+                    user_id INTEGER NOT NULL
+                )",
+    )
+    .execute(&pool)
+    .await
+    .expect("to be able to create a table");
+
+    sqlx::query(
         "CREATE TABLE IF NOT EXISTS accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
+                shared INTEGER DEFAULT 0,
                 balance_cents INTEGER NOT NULL DEFAULT 0
             )",
     )
@@ -36,9 +57,19 @@ async fn main() {
     .expect("to be able to create a table");
 
     sqlx::query(
+        "CREATE TABLE IF NOT EXISTS account_connections (
+                    id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL
+                )",
+    )
+    .execute(&pool)
+    .await
+    .expect("to be able to create a table");
+
+    sqlx::query(
         "CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
+                author_id INTEGER NOT NULL,
                 created_at INTEGER DEFAULT (unixepoch())
             )",
     )
@@ -51,27 +82,6 @@ async fn main() {
                 id INTEGER NOT NULL,
                 account_id INTEGER NOT NULL,
                 balance_diff_cents INTEGER NOT NULL
-            )",
-    )
-    .execute(&pool)
-    .await
-    .expect("to be able to create a table");
-
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                hash_and_salt TEXT NOT NULL
-            )",
-    )
-    .execute(&pool)
-    .await
-    .expect("to be able to create a table");
-
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS authenticated_sessions (
-                session_id TEXT NOT NULL,
-                user_id INTEGER NOT NULL
             )",
     )
     .execute(&pool)

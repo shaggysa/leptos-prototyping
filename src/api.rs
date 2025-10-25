@@ -75,21 +75,30 @@ use crate::types::{
 pub async fn get_accounts() -> Result<Vec<Account>, ServerFnError> {
     pull_database_and_client_info!(pool, _session_id, user_id);
 
-    let accounts: Vec<(u32, String, i64)> = sqlx::query_as(
-        "SELECT id, title, balance_cents FROM accounts WHERE user_id = ? ORDER BY id ASC",
-    )
-    .bind(&user_id)
-    .fetch_all(&pool)
-    .await?;
+    let mut accounts: Vec<Account> = Vec::new();
 
-    Ok(accounts
-        .into_iter()
-        .map(|(id, title, balance_cents)| Account {
+    let account_ids: Vec<u32> =
+        sqlx::query_scalar("SELECT id FROM account_connections WHERE user_id = ?")
+            .bind(&user_id)
+            .fetch_all(&pool)
+            .await?;
+
+    for id in account_ids {
+        let account: (String, i64, bool) =
+            sqlx::query_as("SELECT title, balance_cents, shared FROM accounts WHERE id = ?")
+                .bind(&id)
+                .fetch_one(&pool)
+                .await?;
+
+        accounts.push(Account {
             id,
-            title,
-            balance_cents,
-        })
-        .collect())
+            title: account.0,
+            balance_cents: account.1,
+            shared: account.2,
+        });
+    }
+
+    Ok(accounts)
 }
 
 #[cfg(feature = "ssr")]
@@ -97,9 +106,21 @@ pub async fn get_accounts() -> Result<Vec<Account>, ServerFnError> {
 pub async fn add_account(title: String) -> Result<(), ServerFnError> {
     pull_database_and_client_info!(pool, _session_id, user_id);
 
-    sqlx::query("INSERT INTO accounts (user_id, title, balance_cents) VALUES (?, ?, 0)")
+    sqlx::query("INSERT INTO accounts (title, balance_cents) VALUES (?, 0)")
+        .bind(&title.trim())
+        .execute(&pool)
+        .await?;
+
+    let account_id =
+        sqlx::query_scalar::<_, Option<u32>>("SELECT MAX(id) FROM accounts WHERE title = ?")
+            .bind(&title.trim())
+            .fetch_one(&pool)
+            .await?
+            .expect("the entry to exist");
+
+    sqlx::query("INSERT INTO account_connections (id, user_id) VALUES (?,?)")
+        .bind(&account_id)
         .bind(&user_id)
-        .bind(title.trim())
         .execute(&pool)
         .await?;
 
@@ -108,11 +129,48 @@ pub async fn add_account(title: String) -> Result<(), ServerFnError> {
 
 #[cfg(feature = "ssr")]
 #[server]
-pub async fn transact(acc_ids: Vec<String>, balance_add_cents: Vec<String>, balance_remove_cents: Vec<String>) -> Result<TransactionResult, ServerFnError> {
+pub async fn share_account(account_id: u32, username: String) -> Result<(), ServerFnError> {
+    pull_database_and_client_info!(pool, _session_id, _user_id);
 
+    let user_id: u32 = match sqlx::query_scalar("SELECT id FROM users WHERE username = ?")
+        .bind(&username)
+        .fetch_one(&pool)
+        .await
+    {
+        Ok(s) => s,
+        Err(_) => {
+            return Err(ServerFnError::ServerError(
+                (format!("A user with the username {} was not found!", username)),
+            ))
+        }
+    };
+
+    sqlx::query("INSERT INTO account_connections (id, user_id) SELECT ?, ? WHERE NOT EXISTS(SELECT 1 FROM account_connections WHERE id = ? AND user_id = ?)")
+        .bind(&account_id)
+        .bind(&user_id)
+        .bind(&account_id)
+        .bind(&user_id)
+        .execute(&pool)
+        .await?;
+
+    sqlx::query("UPDATE accounts SET shared = 1 WHERE id = ?")
+        .bind(&account_id)
+        .execute(&pool)
+        .await?;
+
+    Ok(())
+}
+
+#[cfg(feature = "ssr")]
+#[server]
+pub async fn transact(
+    acc_ids: Vec<String>,
+    balance_add_cents: Vec<String>,
+    balance_remove_cents: Vec<String>,
+) -> Result<TransactionResult, ServerFnError> {
     pull_database_and_client_info!(pool, _session_id, user_id);
 
-    let mut balance_updates: Vec<BalanceUpdate> =  Vec::new();
+    let mut balance_updates: Vec<BalanceUpdate> = Vec::new();
 
     for i in 0..acc_ids.len() {
         let account_add: i64 = balance_add_cents.get(i).unwrap().parse().unwrap_or(0);
@@ -121,12 +179,10 @@ pub async fn transact(acc_ids: Vec<String>, balance_add_cents: Vec<String>, bala
 
         let account_change = account_add - account_remove;
         if account_change != 0 {
-            balance_updates.push(
-                BalanceUpdate {
-                    id: acc_ids.get(i).unwrap().parse().unwrap(),
-                    balance_diff_cents: account_change,
-                }
-            )
+            balance_updates.push(BalanceUpdate {
+                id: acc_ids.get(i).unwrap().parse().unwrap(),
+                balance_diff_cents: account_change,
+            })
         }
     }
 
@@ -144,7 +200,7 @@ pub async fn transact(acc_ids: Vec<String>, balance_add_cents: Vec<String>, bala
         ));
     }
 
-    sqlx::query("INSERT INTO transactions (user_id) VALUES (?)")
+    sqlx::query("INSERT INTO transactions (author_id) VALUES (?)")
         .bind(&user_id)
         .execute(&pool)
         .await?;
@@ -152,7 +208,7 @@ pub async fn transact(acc_ids: Vec<String>, balance_add_cents: Vec<String>, bala
     // The table auto-increments the id, so I must fetch it so I know what to tag the children with.
     // binding the session ID prevents a race condition in the case where two users call transact() simultaneously
     let transaction_id = sqlx::query_scalar::<_, Option<u32>>(
-        "SELECT MAX(id) FROM transactions WHERE user_id = ?",
+        "SELECT MAX(id) FROM transactions WHERE author_id = ?",
     )
     .bind(&user_id)
     .fetch_one(&pool)
@@ -173,14 +229,12 @@ pub async fn transact(acc_ids: Vec<String>, balance_add_cents: Vec<String>, bala
        .execute(&pool)
        .await?;
 
-        sqlx::query(
-            "UPDATE accounts SET balance_cents = balance_cents + ? WHERE id = ? AND user_id = ?",
-        )
-        .bind(update.balance_diff_cents)
-        .bind(update.id)
-        .bind(&user_id)
-        .execute(&pool)
-        .await?;
+        sqlx::query("UPDATE accounts SET balance_cents = balance_cents + ? WHERE id = ?")
+            .bind(update.balance_diff_cents)
+            .bind(update.id)
+            .bind(&user_id)
+            .execute(&pool)
+            .await?;
     }
     return Ok(TransactionResult::UPDATED);
 }
@@ -190,7 +244,7 @@ pub async fn get_transaction_parents() -> Result<Vec<Transaction>, ServerFnError
     pull_database_and_client_info!(pool, _session_id, user_id);
 
     let transactions: Vec<(u32, i64)> = match sqlx::query_as(
-        "SELECT id, created_at FROM transactions WHERE user_id = ? ORDER BY created_at DESC",
+        "SELECT id, created_at FROM transactions WHERE author_id = ? ORDER BY created_at DESC",
     )
     .bind(&user_id)
     .fetch_all(&pool)
@@ -228,14 +282,13 @@ pub async fn get_transaction_children(
     let mut account_name_map: HashMap<u32, String> = HashMap::new();
 
     for transaction in &partial_transactions {
-        let name = sqlx::query_scalar::<_, Option<String>>(
-            "SELECT title FROM accounts WHERE user_id = ? AND id = ?",
-        )
-        .bind(&user_id)
-        .bind(transaction.0)
-        .fetch_one(&pool)
-        .await?
-        .expect("the entry to exist");
+        let name =
+            sqlx::query_scalar::<_, Option<String>>("SELECT title FROM accounts WHERE id = ?")
+                .bind(&user_id)
+                .bind(transaction.0)
+                .fetch_one(&pool)
+                .await?
+                .expect("the entry to exist");
 
         account_name_map.insert(transaction.0, name);
     }
@@ -292,7 +345,7 @@ pub async fn create_account(
 
     if password != confirm_password {
         return Err(ServerFnError::ServerError(
-            ("Your passwords do not match!".to_string()),
+            "Your passwords do not match!".to_string(),
         ));
     }
 
@@ -330,11 +383,32 @@ pub async fn create_account(
     let mut rng = OsRng;
     let mut salt = [0u8; 16];
 
-   let _ = rng.try_fill_bytes(&mut salt);
+    let _ = rng.try_fill_bytes(&mut salt);
 
     sqlx::query("INSERT INTO users (username, hash_and_salt) VALUES (?, ?)")
         .bind(&username)
         .bind(bcrypt::hash(password, DEFAULT_COST).unwrap())
+        .execute(&pool)
+        .await?;
+
+    let id: u32 = sqlx::query_scalar::<_, Option<u32>>("SELECT id FROM users WHERE username = ?")
+        .bind(&username)
+        .fetch_one(&pool)
+        .await?
+        .expect("the entry to exist");
+
+    let session_id = match &session.id() {
+        Some(s) => s.to_string(),
+        None => {
+            return Err(ServerFnError::ServerError(
+                "Session id not found, please refresh the page.".to_string(),
+            ))
+        }
+    };
+
+    sqlx::query("INSERT INTO authenticated_sessions (session_id, user_id) VALUES (?, ?)")
+        .bind(&session_id)
+        .bind(&id)
         .execute(&pool)
         .await?;
 
@@ -371,12 +445,19 @@ pub async fn login(username: String, password: String) -> Result<(), ServerFnErr
         }
     };
 
-    let account: (u32, String) = match sqlx::query_as("SELECT id, hash_and_salt  FROM users WHERE username = ?")
-        .bind(&username)
-        .fetch_one(&pool)
-        .await {
-          Ok(s) => s,
-          Err(_) => return Err(ServerFnError::ServerError(format!("An account with the username \"{}\" does not exist. Please sign up.", &username))),
+    let account: (u32, String) =
+        match sqlx::query_as("SELECT id, hash_and_salt  FROM users WHERE username = ?")
+            .bind(&username)
+            .fetch_one(&pool)
+            .await
+        {
+            Ok(s) => s,
+            Err(_) => {
+                return Err(ServerFnError::ServerError(format!(
+                    "An account with the username \"{}\" does not exist. Please sign up.",
+                    &username
+                )))
+            }
         };
 
     if bcrypt::verify(password, &account.1).unwrap() {
@@ -386,7 +467,9 @@ pub async fn login(username: String, password: String) -> Result<(), ServerFnErr
             .execute(&pool)
             .await?;
     } else {
-        return Err(ServerFnError::ServerError("Incorrect Password!".to_string()));
+        return Err(ServerFnError::ServerError(
+            "Incorrect Password!".to_string(),
+        ));
     }
 
     Ok(())

@@ -7,6 +7,7 @@ pub struct Account {
     pub id: u32,
     pub title: String,
     pub balance_cents: i64,
+    pub shared: bool,
 }
 
 #[cfg(feature = "ssr")]
