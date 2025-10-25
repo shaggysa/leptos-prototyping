@@ -284,7 +284,6 @@ pub async fn get_transaction_children(
     for transaction in &partial_transactions {
         let name =
             sqlx::query_scalar::<_, Option<String>>("SELECT title FROM accounts WHERE id = ?")
-                .bind(&user_id)
                 .bind(transaction.0)
                 .fetch_one(&pool)
                 .await?
