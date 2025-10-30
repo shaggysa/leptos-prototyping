@@ -55,7 +55,7 @@ async fn main() {
         .expect("to be able to migrate the session store");
 
     let session_layer = SessionManagerLayer::new(session_store)
-        .with_expiry(Expiry::OnInactivity(Duration::hours(6)));
+        .with_expiry(Expiry::OnInactivity(Duration::hours(48)));
 
     let routes = generate_route_list(App);
 

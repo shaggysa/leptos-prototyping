@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use std::collections::{HashMap, HashSet};
 
+#[cfg(feature = "ssr")]
 #[derive(Serialize, Deserialize, Hash)]
 enum Permissions {
     Read,
@@ -14,6 +15,7 @@ enum Permissions {
 
 #[cfg(feature = "ssr")]
 struct AccountState {
+    account_id: Uuid,
     owner_id: Uuid,
     tenants: HashMap<Uuid, Permissions>,
     name: String,
@@ -55,7 +57,7 @@ impl AccountState {
 struct UserState {
     username: String,
     password: String,
-    accounts: Vec<AccountState>,
+    accounts: Vec<Uuid>,
     authenticated_sessions: HashSet<String>,
     deleted: bool,
 }
@@ -68,6 +70,7 @@ impl UserState {
                 self.username = username;
                 self.password = password;
             }
+            UserEvent::AddAccount { id } => self.accounts.push(id),
             UserEvent::UsernameUpdate { username } => self.username = username,
             UserEvent::PasswordUpdate { password } => self.password = password,
             UserEvent::Login { session_id } => _ = self.authenticated_sessions.insert(session_id),
@@ -82,6 +85,7 @@ impl UserState {
 #[serde(tag = "type", content = "data")]
 enum UserEvent {
     Created { username: String, password: String },
+    AddAccount { id: Uuid },
     UsernameUpdate { username: String },
     PasswordUpdate { password: String },
     Login { session_id: String },
