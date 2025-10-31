@@ -1,4 +1,5 @@
 mod api;
+mod app;
 mod types;
 use leptos::prelude::LeptosOptions;
 
@@ -7,7 +8,7 @@ use leptos::prelude::LeptosOptions;
 async fn main() {
     use std::path::Path;
 
-    use crate::app::*;
+    use crate::app::app::*;
     use axum::Router;
     use dotenvy::dotenv;
     use leptos::logging::log;
@@ -27,12 +28,16 @@ async fn main() {
 
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL");
+    let database_url: String = match env::var("DATABASE_URL") {
+        Ok(s) => s,
+        Err(e) => panic!("failed to get database url"),
+    };
 
     let pool: Pool<Postgres> = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
-        .await?;
+        .await
+        .expect("to be able to connet to the pool");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS user_events (

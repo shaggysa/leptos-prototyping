@@ -1,70 +1,69 @@
-macro_rules! pull_database_and_client_info {
-    ($x:ident, $y:ident, $z:ident) => {
-        let Extension(session) = extract::<Extension<Session>>().await?;
-
-        let Extension(pool) = extract::<Extension<SqlitePool>>().await?;
-
-        // force initialize the session
-        if session
-            .get::<bool>("initialized")
-            .await
-            .ok()
-            .flatten()
-            .is_none()
-        {
-            match session.insert("initialized", true).await {
-                Ok(s) => s,
-                Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
-            };
-        }
-
-        let session_id = match session.id() {
-            Some(s) => s.to_string(),
-            None => {
-                return Err(ServerFnError::ServerError(
-                    "Session id not found-try refreshing the page".to_string(),
-                ))
-            }
-        };
-
-        let user_id = match sqlx::query_scalar::<_, Option<u32>>(
-            "SELECT user_id FROM authenticated_sessions WHERE session_id = ?",
-        )
-        .bind(&session_id)
-        .fetch_one(&pool)
-        .await
-        {
-            Ok(s) => s,
-            Err(_) => {
-                return Err(ServerFnError::ServerError(
-                    "You must be logged in!".to_string(),
-                ));
-            }
-        };
-
-        let $x = pool;
-        let $y = session_id;
-        let $z = user_id;
-    };
-}
-
 #[cfg(feature = "ssr")]
 pub(crate) mod api {
-    use crate::types;
     use axum::Extension;
     use leptos::prelude::*;
     use leptos_axum::extract;
-    use sqlx::SqlitePool;
+    use sqlx::PgPool;
     use std::collections::HashMap;
     use tower_sessions::Session;
 
+    macro_rules! pull_database_and_client_info {
+        ($x:ident, $y:ident, $z:ident) => {
+            let Extension(session) = extract::<Extension<Session>>().await?;
+
+            let Extension(pool) = extract::<Extension<PgPool>>().await?;
+
+            // fofix the majority of errors in the app modulerce initialize the session
+            if session
+                .get::<bool>("initialized")
+                .await
+                .ok()
+                .flatten()
+                .is_none()
+            {
+                match session.insert("initialized", true).await {
+                    Ok(s) => s,
+                    Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
+                };
+            }
+
+            let session_id = match session.id() {
+                Some(s) => s.to_string(),
+                None => {
+                    return Err(ServerFnError::ServerError(
+                        "Session id not found-try refreshing the page".to_string(),
+                    ))
+                }
+            };
+
+            let user_id = match sqlx::query_scalar::<_, Option<i32>>(
+                "SELECT user_id FROM authenticated_sessions WHERE session_id = ?",
+            )
+            .bind(&session_id)
+            .fetch_one(&pool)
+            .await
+            {
+                Ok(s) => s,
+                Err(_) => {
+                    return Err(ServerFnError::ServerError(
+                        "You must be logged in!".to_string(),
+                    ));
+                }
+            };
+
+            let $x = pool;
+            let $y = session_id;
+            let $z = user_id;
+        };
+    }
+
     #[server]
-    pub async fn get_accounts() -> Result<Vec<Account>, ServerFnError> {
+    pub async fn get_accounts() -> Result<Vec<(String, i64, bool)>, ServerFnError> {
         pull_database_and_client_info!(pool, _session_id, user_id);
 
-        let mut accounts: Vec<Account> = Vec::new();
+        let mut accounts: Vec<(String, i64, bool)> = Vec::new();
 
-        let account_ids: Vec<u32> =
+        let account_ids: Vec<i32> =
             sqlx::query_scalar("SELECT id FROM account_connections WHERE user_id = ?")
                 .bind(&user_id)
                 .fetch_all(&pool)
@@ -77,12 +76,7 @@ pub(crate) mod api {
                     .fetch_one(&pool)
                     .await?;
 
-            accounts.push(Account {
-                id,
-                title: account.0,
-                balance_cents: account.1,
-                shared: account.2,
-            });
+            accounts.push((account.0, account.1, account.2));
         }
 
         Ok(accounts)
@@ -98,7 +92,7 @@ pub(crate) mod api {
             .await?;
 
         let account_id =
-            sqlx::query_scalar::<_, Option<u32>>("SELECT MAX(id) FROM accounts WHERE title = ?")
+            sqlx::query_scalar::<_, Option<i32>>("SELECT MAX(id) FROM accounts WHERE title = ?")
                 .bind(&title.trim())
                 .fetch_one(&pool)
                 .await?
@@ -117,29 +111,30 @@ pub(crate) mod api {
     pub async fn share_account(account_id: u32, username: String) -> Result<(), ServerFnError> {
         pull_database_and_client_info!(pool, _session_id, _user_id);
 
-        let user_id: u32 = match sqlx::query_scalar("SELECT id FROM users WHERE username = ?")
+        let user_id: i32 = match sqlx::query_scalar("SELECT id FROM users WHERE username = ?")
             .bind(&username)
             .fetch_one(&pool)
             .await
         {
             Ok(s) => s,
             Err(_) => {
-                return Err(ServerFnError::ServerError(
-                    (format!("A user with the username {} was not found!", username)),
-                ))
+                return Err(ServerFnError::ServerError(format!(
+                    "A user with the username {} was not found!",
+                    username
+                )))
             }
         };
 
         sqlx::query("INSERT INTO account_connections (id, user_id) SELECT ?, ? WHERE NOT EXISTS(SELECT 1 FROM account_connections WHERE id = ? AND user_id = ?)")
-        .bind(&account_id)
+        .bind(account_id as i32)
         .bind(&user_id)
-        .bind(&account_id)
+        .bind(account_id as i32)
         .bind(&user_id)
         .execute(&pool)
         .await?;
 
         sqlx::query("UPDATE accounts SET shared = 1 WHERE id = ?")
-            .bind(&account_id)
+            .bind(account_id as i32)
             .execute(&pool)
             .await?;
 
@@ -151,10 +146,10 @@ pub(crate) mod api {
         acc_ids: Vec<String>,
         balance_add_cents: Vec<String>,
         balance_remove_cents: Vec<String>,
-    ) -> Result<TransactionResult, ServerFnError> {
+    ) -> Result<(), ServerFnError> {
         pull_database_and_client_info!(pool, _session_id, user_id);
 
-        let mut balance_updates: Vec<BalanceUpdate> = Vec::new();
+        let mut balance_updates: Vec<(String, i64)> = Vec::new();
 
         for i in 0..acc_ids.len() {
             let account_add: i64 = balance_add_cents.get(i).unwrap().parse().unwrap_or(0);
@@ -163,17 +158,14 @@ pub(crate) mod api {
 
             let account_change = account_add - account_remove;
             if account_change != 0 {
-                balance_updates.push(BalanceUpdate {
-                    id: acc_ids.get(i).unwrap().parse().unwrap(),
-                    balance_diff_cents: account_change,
-                })
+                balance_updates.push((acc_ids.get(i).unwrap().parse().unwrap(), account_change))
             }
         }
 
         let mut total_change = 0;
 
         for update in &balance_updates {
-            total_change += update.balance_diff_cents
+            total_change += update.1
         }
 
         if total_change != 0 {
@@ -191,7 +183,7 @@ pub(crate) mod api {
 
         // The table auto-increments the id, so I must fetch it so I know what to tag the children with.
         // binding the session ID prevents a race condition in the case where two users call transact() simultaneously
-        let transaction_id = sqlx::query_scalar::<_, Option<u32>>(
+        let transaction_id = sqlx::query_scalar::<_, Option<i32>>(
             "SELECT MAX(id) FROM transactions WHERE author_id = ?",
         )
         .bind(&user_id)
@@ -200,7 +192,7 @@ pub(crate) mod api {
         .expect("the entry to exist");
 
         for update in &balance_updates {
-            if update.balance_diff_cents == 0 {
+            if update.1 == 0 {
                 continue;
             }
 
@@ -208,28 +200,28 @@ pub(crate) mod api {
            "INSERT INTO partial_transactions (id, account_id, balance_diff_cents) VALUES (?, ?, ?)"
        )
        .bind(&transaction_id)
-       .bind(update.id)
-       .bind(update.balance_diff_cents)
+       .bind(update.0.clone())
+       .bind(update.1)
        .execute(&pool)
        .await?;
 
             sqlx::query("UPDATE accounts SET balance_cents = balance_cents + ? WHERE id = ?")
-                .bind(update.balance_diff_cents)
-                .bind(update.id)
+                .bind(update.1)
+                .bind(update.0.clone())
                 .bind(&user_id)
                 .execute(&pool)
                 .await?;
         }
-        return Ok(TransactionResult::UPDATED);
+        return Ok(());
     }
 
-    pub async fn get_transaction_parents() -> Result<Vec<Transaction>, ServerFnError> {
+    pub async fn get_transaction_parents() -> Result<Vec<(i32, i64)>, ServerFnError> {
         pull_database_and_client_info!(pool, _session_id, user_id);
 
-        let transactions: Vec<(u32, i64)> = match sqlx::query_as(
+        let transactions: Vec<(i32, i64)> = match sqlx::query_as(
             "SELECT id, created_at FROM transactions WHERE author_id = ? ORDER BY created_at DESC",
         )
-        .bind(&user_id)
+        .bind(user_id.unwrap() as i32)
         .fetch_all(&pool)
         .await
         {
@@ -237,23 +229,18 @@ pub(crate) mod api {
             Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
         };
 
-        Ok(transactions
-            .into_iter()
-            .map(|(id, created_at)| Transaction { id, created_at })
-            .collect())
+        Ok(transactions)
     }
 
     pub async fn get_transaction_children(
-        transaction_id: u32,
-    ) -> Result<Vec<PartialTransaction>, ServerFnError> {
-        use crate::types::PartialTransaction;
-
+        transaction_id: i32,
+    ) -> Result<Vec<(i32, i64)>, ServerFnError> {
         pull_database_and_client_info!(pool, _session_id, user_id);
 
-        let partial_transactions: Vec<(u32, i64)> = match sqlx::query_as(
+        let partial_transactions: Vec<(i32, i64)> = match sqlx::query_as(
         "SELECT account_id, balance_diff_cents FROM partial_transactions WHERE id = ? ORDER by balance_diff_cents ASC",
     )
-    .bind(&transaction_id)
+    .bind(transaction_id as i32)
     .fetch_all(&pool)
     .await
     {
@@ -261,7 +248,7 @@ pub(crate) mod api {
         Err(e) => return Err(ServerFnError::ServerError(e.to_string())),
     };
 
-        let mut account_name_map: HashMap<u32, String> = HashMap::new();
+        let mut account_name_map: HashMap<i32, String> = HashMap::new();
 
         for transaction in &partial_transactions {
             let name =
@@ -274,18 +261,11 @@ pub(crate) mod api {
             account_name_map.insert(transaction.0, name);
         }
 
-        Ok(partial_transactions
-            .into_iter()
-            .map(|(account_id, balance_diff_cents)| PartialTransaction {
-                transaction_id: transaction_id,
-                account_id,
-                account_name: account_name_map.get(&account_id).unwrap().to_string(),
-                balance_diff_cents,
-            })
-            .collect())
+        Ok(partial_transactions)
     }
 
-    pub async fn package_transactions() -> Result<Vec<PackagedTransaction>, ServerFnError> {
+    pub async fn package_transactions() -> Result<Vec<((i32, i64), Vec<(i32, i64)>)>, ServerFnError>
+    {
         let mut packaged_transactions = Vec::new();
 
         let transaction_parents = match get_transaction_parents().await {
@@ -299,7 +279,7 @@ pub(crate) mod api {
         };
 
         for parent in transaction_parents {
-            let children = match get_transaction_children(parent.id).await {
+            let children = match get_transaction_children(parent.0).await {
                 Ok(s) => s,
                 Err(e) => {
                     return Err(ServerFnError::ServerError(format!(
@@ -308,7 +288,7 @@ pub(crate) mod api {
                     )))
                 }
             };
-            packaged_transactions.push(PackagedTransaction { parent, children });
+            packaged_transactions.push((parent, children));
         }
         Ok(packaged_transactions)
     }
@@ -330,7 +310,7 @@ pub(crate) mod api {
 
         let Extension(session) = extract::<Extension<Session>>().await?;
 
-        let Extension(pool) = extract::<Extension<SqlitePool>>().await?;
+        let Extension(pool) = extract::<Extension<PgPool>>().await?;
 
         // force initialize the session
         if session
@@ -370,8 +350,8 @@ pub(crate) mod api {
             .execute(&pool)
             .await?;
 
-        let id: u32 =
-            sqlx::query_scalar::<_, Option<u32>>("SELECT id FROM users WHERE username = ?")
+        let id: i32 =
+            sqlx::query_scalar::<_, Option<i32>>("SELECT id FROM users WHERE username = ?")
                 .bind(&username)
                 .fetch_one(&pool)
                 .await?
@@ -399,7 +379,7 @@ pub(crate) mod api {
     pub async fn login(username: String, password: String) -> Result<(), ServerFnError> {
         let Extension(session) = extract::<Extension<Session>>().await?;
 
-        let Extension(pool) = extract::<Extension<SqlitePool>>().await?;
+        let Extension(pool) = extract::<Extension<PgPool>>().await?;
 
         // force initialize the session
         if session
@@ -424,7 +404,7 @@ pub(crate) mod api {
             }
         };
 
-        let account: (u32, String) =
+        let account: (i32, String) =
             match sqlx::query_as("SELECT id, hash_and_salt  FROM users WHERE username = ?")
                 .bind(&username)
                 .fetch_one(&pool)

@@ -13,7 +13,7 @@ axum = { version = "0.8.0", optional = true }
 tower = {version = "0.4", optional = true}
 tower-http = { version = "0.5", features = ["fs"], optional = true }
 tower-sessions = {version = "0.12", optional = true}
-tower-sessions-sqlx-store = { version = "0.12", features = ["sqlite"], optional = true }
+tower-sessions-sqlx-store = { version = "0.12", features = ["postgres"], optional = true }
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
