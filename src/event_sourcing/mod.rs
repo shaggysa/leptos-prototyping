@@ -13,7 +13,3 @@ pub mod user;
 #[cfg(feature = "ssr")]
 #[allow(dead_code)]
 pub mod journal;
-
-#[cfg(feature = "ssr")]
-#[allow(dead_code)]
-pub mod libs;
