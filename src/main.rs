@@ -1,13 +1,10 @@
 #[allow(dead_code)]
-#[cfg(feature = "ssr")]
 mod app;
 
 #[allow(dead_code)]
-#[cfg(feature = "ssr")]
 mod event_sourcing;
 
 #[allow(dead_code)]
-#[cfg(feature = "ssr")]
 mod main_api;
 
 #[cfg(feature = "ssr")]
