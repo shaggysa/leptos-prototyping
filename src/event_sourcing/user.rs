@@ -1,3 +1,4 @@
+use super::journal::{JournalTenantInfo, SharedAndPendingJournals, SharedJournal};
 use bcrypt::verify;
 use leptos::prelude::ServerFnError;
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,9 @@ pub enum UserEvent {
     RemovedFromJournal {
         id: Uuid,
     },
+    SelectedJournal {
+        id: Uuid,
+    },
     Deleted,
 }
 
@@ -75,13 +79,6 @@ impl UserEvent {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
-pub struct JournalTenantInfo {
-    pub tenant_permissions: Permissions,
-    pub inviting_user: Uuid,
-    pub journal_owner: Uuid,
-}
-
 #[derive(Default)]
 pub struct UserState {
     pub id: Uuid,
@@ -91,6 +88,7 @@ pub struct UserState {
     pub pending_journal_invites: HashMap<Uuid, JournalTenantInfo>,
     pub accepted_journal_invites: HashMap<Uuid, JournalTenantInfo>,
     pub owned_journals: HashSet<Uuid>,
+    pub selected_journal: Uuid,
     pub deleted: bool,
 }
 
@@ -184,6 +182,7 @@ impl UserState {
                 }
             }
             UserEvent::RemovedFromJournal { id } => _ = self.accepted_journal_invites.remove(&id),
+            UserEvent::SelectedJournal { id } => self.selected_journal = id,
             UserEvent::Deleted => self.deleted = true,
         }
     }
@@ -303,36 +302,4 @@ pub async fn authenticate(
         return Ok(true);
     }
     Ok(false)
-}
-
-pub struct SharedJournal {
-    pub id: Uuid,
-    pub info: JournalTenantInfo,
-}
-
-pub struct SharedAndPendingJournals {
-    pub shared: HashMap<Uuid, JournalTenantInfo>,
-    pub pending: HashMap<Uuid, JournalTenantInfo>,
-}
-
-pub async fn get_shared_and_pending_journals(
-    user_id: &Uuid,
-    pool: &PgPool,
-) -> Result<SharedAndPendingJournals, ServerFnError> {
-    let user = UserState::build(
-        user_id,
-        vec![
-            EventType::UserInvitedToJournal,
-            EventType::UserAcceptedJournalInvite,
-            EventType::UserDeclinedJournalInvite,
-            EventType::UserRemovedFromJournal,
-        ],
-        pool,
-    )
-    .await?;
-
-    Ok(SharedAndPendingJournals {
-        shared: user.accepted_journal_invites,
-        pending: user.pending_journal_invites,
-    })
 }

@@ -53,7 +53,8 @@ pub enum EventType {
     UserAcceptedJournalInvite = 8,
     UserDeclinedJournalInvite = 9,
     UserRemovedFromJournal = 10,
-    UserDeleted = 11,
+    UserSelectedJournal = 11,
+    UserDeleted = 12,
 
     // Journal events (100-199)
     JournalCreated = 100,
@@ -77,6 +78,7 @@ impl EventType {
             UserEvent::AcceptedJournalInvite { .. } => Self::UserAcceptedJournalInvite,
             UserEvent::DeclinedJournalInvite { .. } => Self::UserDeclinedJournalInvite,
             UserEvent::RemovedFromJournal { .. } => Self::UserRemovedFromJournal,
+            UserEvent::SelectedJournal { .. } => Self::UserSelectedJournal,
             UserEvent::Deleted => Self::UserDeleted,
         }
     }

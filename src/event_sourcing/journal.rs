@@ -147,6 +147,23 @@ impl JournalState {
     }
 }
 
+#[derive(Default, Serialize, Deserialize)]
+pub struct JournalTenantInfo {
+    pub tenant_permissions: Permissions,
+    pub inviting_user: Uuid,
+    pub journal_owner: Uuid,
+}
+
+pub struct SharedJournal {
+    pub id: Uuid,
+    pub info: JournalTenantInfo,
+}
+
+pub struct SharedAndPendingJournals {
+    pub shared: HashMap<Uuid, JournalTenantInfo>,
+    pub pending: HashMap<Uuid, JournalTenantInfo>,
+}
+
 pub async fn get_id_from_name(name: String, pool: &PgPool) -> Result<Option<Uuid>, ServerFnError> {
     Ok(query_scalar(
         r#"

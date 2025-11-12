@@ -172,27 +172,34 @@ fn ClientLogin() -> impl IntoView {
 
 #[component]
 fn TopBar() -> impl IntoView {
-    use crate::api::web_api::LogOut;
+    use crate::main_api::web_api::LogOut;
+
     let log_out_action = ServerAction::<LogOut>::new();
+
     view! {
-                    <div class="flex max-w-7xl mx-auto items-center flex-col">
-                        <div class="flex items-center justify-between px-4 py-4">
-                            <div class="flex gap-8">
+                    <div class="flex max-w-7xl mx-auto items-center flex-col px-4 py-4 gey-8">
                                 <a href="/transact" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
                                     "Make a Transaction"
                                 </a>
                                 <a href="/" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
-                                    "Home"
+                                    "Homepage"
                                 </a>
                                 <a href="/journal" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
                                     "Transaction journal"
                                 </a>
+                                <a href="/invites" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                                    "Journal Invites"
+                                </a>
                                 <br/>
+
                                 <ActionForm action=log_out_action>
                                     <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Log out"</button>
+
                                 </ActionForm>
-                            </div>
-                        </div>
+
+                                <br/>
+
+
                     </div>
     }
 }
