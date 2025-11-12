@@ -1,4 +1,3 @@
-use super::account::AccountEvent;
 use super::journal::JournalEvent;
 use super::user::UserEvent;
 use leptos::prelude::ServerFnError;
@@ -8,34 +7,26 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "payload")]
 pub enum DomainEvent {
     User(UserEvent),
-    Account(AccountEvent),
     Journal(JournalEvent),
 }
 
 impl DomainEvent {
     pub fn to_user_event(self) -> Result<UserEvent, ServerFnError> {
-        match self {
-            Self::User(s) => Ok(s),
-            _ => Err(ServerFnError::ServerError(
-                "failed to convert domain event to user event".to_string(),
-            )),
+        if let Self::User(s) = self {
+            return Ok(s);
         }
-    }
-    pub fn to_account_event(self) -> Result<AccountEvent, ServerFnError> {
-        match self {
-            Self::Account(s) => Ok(s),
-            _ => Err(ServerFnError::ServerError(
-                "failed to convert domain event to account event".to_string(),
-            )),
-        }
+
+        Err(ServerFnError::ServerError(
+            "unable to convert domain event to user event".to_string(),
+        ))
     }
     pub fn to_journal_event(self) -> Result<JournalEvent, ServerFnError> {
-        match self {
-            Self::Journal(s) => Ok(s),
-            _ => Err(ServerFnError::ServerError(
-                "failed to convert domain event to account event".to_string(),
-            )),
+        if let Self::Journal(s) = self {
+            return Ok(s);
         }
+        Err(ServerFnError::ServerError(
+            "unable to convert domain event to account event".to_string(),
+        ))
     }
 }
 
@@ -44,8 +35,7 @@ impl DomainEvent {
 #[repr(i16)]
 pub enum AggregateType {
     User = 1,
-    Account = 2,
-    Journal = 3,
+    Journal = 2,
 }
 
 #[derive(sqlx::Type)]
@@ -65,15 +55,13 @@ pub enum EventType {
     UserRemovedFromJournal = 10,
     UserDeleted = 11,
 
-    // Account events (100-199)
-    AccountCreated = 100,
-    AccountBalanceUpdated = 101,
-    AccountDeleted = 102,
-
-    // Journal events (200-299)
-    JournalCreated = 200,
-    JournalAddedEntry = 201,
-    JournalDeleted = 202,
+    // Journal events (100-199)
+    JournalCreated = 100,
+    JournalRenamed = 101,
+    JournalAccountCreated = 102,
+    JournalAccountDeleted = 103,
+    JournalAddedEntry = 104,
+    JournalDeleted = 105,
 }
 
 impl EventType {
@@ -93,17 +81,12 @@ impl EventType {
         }
     }
 
-    pub fn from_account_event(account_event: &AccountEvent) -> Self {
-        match account_event {
-            AccountEvent::Created { .. } => Self::AccountCreated,
-            AccountEvent::BalanceUpdated { .. } => Self::AccountBalanceUpdated,
-            AccountEvent::Deleted => Self::AccountDeleted,
-        }
-    }
-
     pub fn from_journal_event(journal_event: &JournalEvent) -> Self {
         match journal_event {
             JournalEvent::Created { .. } => Self::JournalCreated,
+            JournalEvent::Renamed { .. } => Self::JournalRenamed,
+            JournalEvent::CreatedAccount { .. } => Self::JournalAccountCreated,
+            JournalEvent::DeletedAccount { .. } => Self::JournalAccountDeleted,
             JournalEvent::AddedEntry { .. } => Self::JournalAddedEntry,
             JournalEvent::Deleted => Self::JournalDeleted,
         }

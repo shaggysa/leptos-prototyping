@@ -1,11 +1,11 @@
 #[allow(dead_code)]
 #[cfg(feature = "ssr")]
-pub mod event;
+pub mod web_api;
 
 #[allow(dead_code)]
 #[cfg(feature = "ssr")]
-pub mod user;
+pub mod extensions;
 
 #[allow(dead_code)]
 #[cfg(feature = "ssr")]
-pub mod journal;
+pub mod return_types;
