@@ -10,6 +10,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+
+  clippy:
+    
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Clippy
+      run: cargo clippy --verbose
+
   format:
 
     runs-on: ubuntu-latest
@@ -24,7 +35,7 @@ jobs:
      
     - name: Run Formatter
       run: cargo fmt --verbose
-     
+
   build:
 
     runs-on: ubuntu-latest
@@ -51,5 +62,4 @@ jobs:
       
     - name: Run tests
       run: cargo test --verbose
-  
   
