@@ -92,7 +92,9 @@ pub async fn login(username: String, password: String) -> Result<(), ServerFnErr
 }
 
 #[server]
-pub async fn log_out(user_id: Uuid, session_id: String) -> Result<(), ServerFnError> {
+pub async fn log_out(user_id: String) -> Result<(), ServerFnError> {
+    let user_id = Uuid::try_from(user_id)?;
+    let session_id = extensions::get_session_id().await?;
     use EventType::*;
 
     let pool = extensions::get_pool().await?;
@@ -109,15 +111,22 @@ pub async fn log_out(user_id: Uuid, session_id: String) -> Result<(), ServerFnEr
 }
 
 #[server]
-pub async fn create_journal(journal_name: String, user_id: Uuid) -> Result<(), ServerFnError> {
+pub async fn create_journal(journal_name: String, user_id: String) -> Result<(), ServerFnError> {
+    let user_id = Uuid::try_parse(&user_id)?;
     let pool = extensions::get_pool().await?;
+
+    let journal_id = Uuid::new_v4();
 
     JournalEvent::Created {
         name: journal_name,
         owner: user_id,
     }
-    .push_db(&Uuid::new_v4(), &pool)
+    .push_db(&journal_id, &pool)
     .await?;
+
+    UserEvent::CreatedJournal { id: journal_id }
+        .push_db(&user_id, &pool)
+        .await?;
 
     Ok(())
 }
@@ -291,7 +300,11 @@ pub async fn decline_journal_invite(user_id: Uuid, journal_id: Uuid) -> Result<(
 }
 
 #[server]
-pub async fn get_associated_journals(user_id: Uuid) -> Result<Journals, ServerFnError> {
+pub async fn get_associated_journals(
+    user_id: Result<Uuid, ServerFnError>,
+) -> Result<Journals, ServerFnError> {
+    let user_id = user_id?;
+
     use EventType::*;
     let mut journals = Vec::new();
 
@@ -356,7 +369,10 @@ pub async fn get_associated_journals(user_id: Uuid) -> Result<Journals, ServerFn
 }
 
 #[server]
-pub async fn get_accounts(user_id: Uuid) -> Result<Vec<Account>, ServerFnError> {
+pub async fn get_accounts(
+    user_id: Result<Uuid, ServerFnError>,
+) -> Result<Vec<Account>, ServerFnError> {
+    let user_id = user_id?;
     use EventType::*;
 
     let mut accounts = Vec::new();
@@ -573,9 +589,11 @@ pub async fn transact(
 }
 
 pub async fn get_transactions(
-    user_id: Uuid,
-    journal_id: Uuid,
+    user_id: Result<Uuid, ServerFnError>,
+    journal_id: Result<Uuid, ServerFnError>,
 ) -> Result<Vec<TransactionWithTimeStamp>, ServerFnError> {
+    let user_id = user_id?;
+    let journal_id = journal_id?;
     use EventType::*;
 
     let mut bundled_transactions = Vec::new();

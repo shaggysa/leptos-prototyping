@@ -1,9 +1,10 @@
-use std::time::{Duration, UNIX_EPOCH};
+//use std::time::{Duration, UNIX_EPOCH};
 
 use crate::event_sourcing::journal::Permissions;
 use crate::main_api::return_types::*;
-use crate::main_api::{return_types::KnownErrors, web_api};
-use chrono::DateTime;
+use crate::main_api::web_api;
+use crate::main_api::web_api::CreateJournal;
+//use chrono::DateTime;
 use leptos::prelude::*;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
@@ -50,8 +51,8 @@ pub fn App() -> impl IntoView {
                 <head>
                     <Routes fallback=|| "Page not found.".into_view()>
                         <Route path=StaticSegment("") view=HomePage/>
-                        <Route path=StaticSegment("/transact") view=Transact/>
-                        <Route path=StaticSegment("/journal") view=GeneralJournal/>
+                        //<Route path=StaticSegment("/transact") view=Transact/>
+                        //<Route path=StaticSegment("/journal") view=GeneralJournal/>
                         <Route path=StaticSegment("/login") view=ClientLogin/>
                         <Route path=StaticSegment("/signup") view=ClientSignUp/>
                     </Routes>
@@ -200,6 +201,7 @@ fn TopBar(journals: Journals, user_id: Uuid) -> impl IntoView {
                         </a>
 
                         <ActionForm action=log_out_action>
+                            <input type="hidden" name="user_id" value=user_id.to_string()/>
                             <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Log out"</button>
 
                         </ActionForm>
@@ -216,11 +218,11 @@ fn TopBar(journals: Journals, user_id: Uuid) -> impl IntoView {
                             <option value="">"-- Select a Journal --"</option>
                             {
                                 journals.associated.into_iter().map(|journal| view! {
-                                    <option value=journal.get_id().to_string()>{journal.get_name().to_string()}</option>
+                                    <option value=journal.get_id().to_string() selected=journals.selected.clone().is_some_and(|f| f.get_id()==journal.get_id())>{journal.get_name().to_string()}</option>
                                 }).collect_view()
                             }
                         </select>
-                        <button class = "mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Submit"</button>
+                        <button class = "mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Select"</button>
                         </ActionForm>
             </div>
     }
@@ -271,48 +273,25 @@ fn AddAccount(user_id: Uuid, journal_id: Uuid) -> impl IntoView {
 }
 
 #[component]
-fn AccountList(user_id: Uuid, journals: Journals) -> impl IntoView {
+fn AccountList(accounts: Vec<Account>, journals: Journals, user_id: Uuid) -> impl IntoView {
     use leptos::either::EitherOf4;
-    let accounts_resource = Resource::new(
-        move || (),
-        move |_| async move { web_api::get_accounts(user_id).await },
-    );
 
     view! {
         <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
             <h1 class="font-bold text-4xl">"Accounts"</h1>
         </div>
-        <Suspense>
-        {move || {
-            match accounts_resource.get() {
-                None => EitherOf4::A( view!{
-                    <p>"Unable to fetch accounts..."</p>
-                }),
+            <div class="mx-auto flex min-w-full flex-col items-center">
+                <ul>
+                    {
+                        accounts.into_iter().map(|account| view! {
+                            <li class="px-1 py-1 font-bold text-2xl">
+                                {account.name}"    " {format!("${}.{:02} {}", account.balance.abs()/100, account.balance.abs() % 100, if account.balance < 0 {"Dr"} else {"Cr"})}
+                            </li>
+                        }).collect_view()
+                    }
+                </ul>
+            </div>
 
-                Some(Err(e)) => if let Some(KnownErrors::PermissionError{..}) = KnownErrors::parse_error(e.clone()) { EitherOf4::B( view! {
-                    <p>"You do not have the required permissions to view this journal!"</p>
-                }) } else {
-                    EitherOf4::C(view! {<p>"And unknown error occured: " {e.to_string()} </p>} )
-                }
-
-                Some(Ok(accounts)) => EitherOf4::D(view! {
-                    <div class="mx-auto flex min-w-full flex-col items-center">
-
-                        <ul>
-                            {
-                                accounts.into_iter().map(|account| view! {
-                                    <li class="px-1 py-1 font-bold text-2xl">
-                                        {account.name}"    " {format!("${}.{:02} {}", account.balance.abs()/100, account.balance.abs() % 100, if account.balance < 0 {"Dr"} else {"Cr"})}
-                                    </li>
-                                }).collect_view()
-                            }
-                        </ul>
-
-                    </div>
-                })
-
-            }
-        }}
 
         {move || {
             if let Some(selected) = journals.selected.clone() {
@@ -330,66 +309,82 @@ fn AccountList(user_id: Uuid, journals: Journals) -> impl IntoView {
                 EitherOf4::D( view! {""} )
             }
         }}
-
-        </Suspense>
     }
 }
 
 #[component]
 fn HomePage() -> impl IntoView {
-    use leptos::either::EitherOf3;
+    use leptos::either::EitherOf5;
 
     let user_id_resource = Resource::new(
         move || (),
         |_| async move { web_api::get_user_id_from_session().await },
     );
 
+    let journals_resource = Resource::new(
+        move || (),
+        move |_| async move { web_api::get_associated_journals(user_id_resource.await).await },
+    );
+
+    let accounts_resource = Resource::new(
+        move || (),
+        move |_| async move { web_api::get_accounts(user_id_resource.await).await },
+    );
+
+    let create_journal = ServerAction::<CreateJournal>::new();
+
     view! {
         <Suspense>
-        {move || {
-            match user_id_resource.get() {
-                        Some(Ok(user_id)) => {
-                            let journals_resource = Resource::new(
-                                move || (),
-                                move |_| async move { web_api::get_associated_journals(user_id).await },
-                            );
-                            EitherOf3::A(view! {
-                                { move || {
+            {move | |
+                Suspend::new(async move {
+                    let user_id = match user_id_resource.await {
+                        Ok(s) => s,
+                        Err(_) => return EitherOf5::A(view! {<meta http-equiv="refresh" content="0; url=/login"/>})
+                    };
 
-                                    match journals_resource.get() {
-                                        Some(Ok(journals)) => EitherOf3::A(view! {
-                                            <TopBar journals=journals.clone() user_id=user_id/>
+                    let journals = match journals_resource.await {
+                        Ok(s) => s,
+                        Err(e) => return EitherOf5::B(view! {<p>"An error occured while fetching journals: "{e.to_string()}</p>})
+                    };
 
-                                            <AccountList user_id=user_id journals=journals/>
-                                        }),
-
-                                        Some(Err(e)) => EitherOf3::B(view! {
-                                            <p>"An error occured: " {e.to_string()}</p>
-                                        }),
-
-                                        None => EitherOf3::C(view! {
-                                            <p>"Unable to fetch journals"</p>
-                                        }),
-                                    }
-                                }
-                                }
-                            })
-                        }
-
-                        Some(Err(_)) => EitherOf3::B(view! {<meta http-equiv="refresh" content="0; url=/login"/>}),
-
-                        None => {
-                            EitherOf3::C(view! {
-                                    <p>"Unable to get user id"</p>
-                            })
-                        }
+                    if journals.selected.is_none() {
+                        return EitherOf5::C(view! {
+                            <TopBar user_id=user_id journals=journals/>
+                            <h1>"Please select a journal to continue!"</h1>
+                            <ActionForm action=create_journal>
+                                <input
+                                    type="hidden"
+                                    name="user_id"
+                                    value=user_id.to_string()
+                                    />
+                                    <input
+                                    name="journal_name"
+                                    type="text"
+                                    placeholder="journal name"
+                                        />
+                                    <button
+                                    type="submit"
+                                    >"Create Journal!"</button>
+                            </ActionForm>
+                        })
                     }
+
+                    let accounts = match accounts_resource.await {
+                        Ok(s) => s,
+                        Err(e) => return EitherOf5::D(view! {<p>"An error occured while fetching accounts: "{e.to_string()}</p>})
+                    };
+                    EitherOf5::E(view! {
+                        <h1>"test"</h1>
+                        <TopBar journals=journals.clone() user_id=user_id/>
+                        <AccountList accounts=accounts journals=journals user_id=user_id/>
+                    })
+                })
             }
-        }
         </Suspense>
     }
 }
 
+/*
 #[component]
 fn Transact() -> impl IntoView {
     use leptos::either::{Either, EitherOf8};
@@ -576,3 +571,4 @@ fn GeneralJournal() -> impl IntoView {
         </Suspense>
     }
 }
+*/
