@@ -1,11 +1,19 @@
 {
-    "lsp": {
-        "rust-analyzer": {
-            "initialization_options": {
-                "cargo": {
-                    "features": ["ssr"] // allows the linter to work with ssr dependant code
-                }
-            }
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "check": {
+          "command": "clippy"
+        },
+
+        "diagnostics": {
+          "experimental": "true"
+        },
+
+        "cargo": {
+          "features": ["ssr"] // allows the linter to work with ssr dependant code
         }
+      }
     }
+  }
 }

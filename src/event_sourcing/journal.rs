@@ -2,7 +2,7 @@ use super::event::{AggregateType, DomainEvent, EventType};
 use bitflags::bitflags;
 use leptos::prelude::ServerFnError;
 use serde::{Deserialize, Serialize};
-use sqlx::{query_scalar, types::JsonValue, PgPool};
+use sqlx::{PgPool, query_scalar, types::JsonValue};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -17,19 +17,19 @@ bitflags! {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BalanceUpdate {
     pub account_name: String,
     pub changed_by: i64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Transaction {
     pub author: Uuid,
     pub updates: Vec<BalanceUpdate>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum JournalEvent {
     Created { name: String, owner: Uuid },
     Renamed { name: String },
@@ -88,7 +88,7 @@ impl JournalState {
                 ORDER BY created_at ASC
                 "#,
         )
-        .bind(&id)
+        .bind(id)
         .bind(AggregateType::Journal)
         .bind(&event_types)
         .fetch_all(pool)
@@ -140,14 +140,14 @@ impl JournalState {
                         .entry(balance_update.account_name.clone())
                         .and_modify(|balance| *balance += balance_update.changed_by);
                 }
-                _ = self.transations.push(transaction);
+                self.transations.push(transaction);
             }
             JournalEvent::Deleted => self.deleted = true,
         }
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct JournalTenantInfo {
     pub tenant_permissions: Permissions,
     pub inviting_user: Uuid,
@@ -164,25 +164,9 @@ pub struct SharedAndPendingJournals {
     pub pending: HashMap<Uuid, JournalTenantInfo>,
 }
 
-pub async fn get_id_from_name(name: String, pool: &PgPool) -> Result<Option<Uuid>, ServerFnError> {
-    Ok(query_scalar(
-        r#"
-        SELECT aggregate_id FROM events
-        WHERE (event_type = $1 OR event_type = $2) AND payload->'data'->>'username' = $3
-        ORDER BY created_at DESC
-        LIMIT 1
-        "#,
-    )
-    .bind(EventType::JournalCreated)
-    .bind(EventType::JournalRenamed)
-    .bind(&name)
-    .fetch_optional(pool)
-    .await?)
-}
-
-pub async fn get_name_from_id(id: Uuid, pool: &PgPool) -> Result<Option<String>, ServerFnError> {
+pub async fn get_name_from_id(id: &Uuid, pool: &PgPool) -> Result<Option<String>, ServerFnError> {
     let journal_state = JournalState::build(
-        &id,
+        id,
         vec![EventType::JournalCreated, EventType::JournalRenamed],
         pool,
     )

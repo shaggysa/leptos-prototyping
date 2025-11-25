@@ -1,9 +1,16 @@
+use std::time::{Duration, UNIX_EPOCH};
+
+use crate::event_sourcing::journal::Permissions;
+use crate::main_api::return_types::*;
+use crate::main_api::{return_types::KnownErrors, web_api};
+use chrono::DateTime;
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
+use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    components::{Route, Router, Routes},
     StaticSegment,
+    components::{Route, Router, Routes},
 };
+use uuid::Uuid;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -56,7 +63,7 @@ pub fn App() -> impl IntoView {
 
 #[component]
 fn ClientSignUp() -> impl IntoView {
-    use crate::api::web_api::CreateAccount;
+    use crate::main_api::web_api::CreateAccount;
     use leptos::either::Either;
     let signup = ServerAction::<CreateAccount>::new();
 
@@ -105,7 +112,7 @@ fn ClientSignUp() -> impl IntoView {
 
             {move || match signup.value().get() {
                 Some(Err(e)) => Either::Left( view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}),
-                _ => Either::Right( view! {} )
+                _ => Either::Right( view! {()} )
             }
     }
     </div>
@@ -114,15 +121,16 @@ fn ClientSignUp() -> impl IntoView {
 
 #[component]
 fn ClientLogin() -> impl IntoView {
-    use crate::api::web_api::{is_logged_in, Login};
+    use crate::main_api::web_api::{Login, get_user_id_from_session};
     use leptos::either::{Either, EitherOf3};
+
     let login = ServerAction::<Login>::new();
-    let logged_in = Resource::new(|| (), |_| async { is_logged_in().await });
+    let logged_in = Resource::new(|| (), |_| async { get_user_id_from_session().await }); // this throws an error if the database can't find an account associated with the session
 
     view! {
             <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
             <Suspense>
-                {move || match logged_in.get() {
+                {move || match logged_in.get() { // redirect to the homepage if the user's session id is already associated with an account
                     Some(Ok(_)) => EitherOf3::A( view! {
                         <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/"/></div>
                     }),
@@ -157,13 +165,13 @@ fn ClientLogin() -> impl IntoView {
                                 <a href = "/signup" class="mt-3 rounded bg-purple-900 px-10 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Don't have an account? Sign up"</a>
                         </div>
                     }),
-                    None => EitherOf3::C (view! {})
+                    None => EitherOf3::C (view! {()})
                 }
             }
             </Suspense>
             {move || match login.value().get() {
                 Some(Err(e)) => Either::Left( view! {<div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>{e.to_string()}</p></div>}),
-                _ => Either::Right(view! {}),
+                _ => Either::Right(view! {()}),
             }
         }
     </div>
@@ -171,140 +179,57 @@ fn ClientLogin() -> impl IntoView {
 }
 
 #[component]
-fn TopBar() -> impl IntoView {
-    use crate::main_api::web_api::LogOut;
-
+fn TopBar(journals: Journals, user_id: Uuid) -> impl IntoView {
+    use web_api::{LogOut, SelectJournal};
     let log_out_action = ServerAction::<LogOut>::new();
+    let select_journal = ServerAction::<SelectJournal>::new();
 
     view! {
-                    <div class="flex max-w-7xl mx-auto items-center flex-col px-4 py-4 gey-8">
-                                <a href="/transact" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
-                                    "Make a Transaction"
-                                </a>
-                                <a href="/" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
-                                    "Homepage"
-                                </a>
-                                <a href="/journal" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
-                                    "Transaction journal"
-                                </a>
-                                <a href="/invites" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
-                                    "Journal Invites"
-                                </a>
-                                <br/>
+            <div class="flex max-w-7xl mx-auto items-center flex-col px-4 py-4 gey-8">
+                        <a href="/transact" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                            "Make a Transaction"
+                        </a>
+                        <a href="/" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                            "Homepage"
+                        </a>
+                        <a href="/journal" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                            "Transaction journal"
+                        </a>
+                        <a href="/invites" class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3">
+                            "Journal Invites"
+                        </a>
 
-                                <ActionForm action=log_out_action>
-                                    <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Log out"</button>
+                        <ActionForm action=log_out_action>
+                            <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Log out"</button>
 
-                                </ActionForm>
+                        </ActionForm>
 
-                                <br/>
+                        <br/>
 
-
-                    </div>
+                        <ActionForm action=select_journal>
+                        <input
+                        type="hidden"
+                        name="user_id"
+                        value=user_id.to_string()
+                        />
+                        <select name="journal_id">
+                            <option value="">"-- Select a Journal --"</option>
+                            {
+                                journals.associated.into_iter().map(|journal| view! {
+                                    <option value=journal.get_id().to_string()>{journal.get_name().to_string()}</option>
+                                }).collect_view()
+                            }
+                        </select>
+                        <button class = "mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Submit"</button>
+                        </ActionForm>
+            </div>
     }
 }
 
 #[component]
-fn HomePage() -> impl IntoView {
-    view! {
-        <head>
-        <TopBar/>
-        <AccountList/>
-        </head>
-    }
-}
-
-#[component]
-fn AccountList() -> impl IntoView {
-    use crate::api::web_api::{, is_logged_in, ShareAccount};
-    use leptos::either::{Either, EitherOf3};
-
-    let accounts = Resource::new(move || (), |_| async move { get_accounts().await });
-    let logged_in = Resource::new(move || (), |_| async move { is_logged_in().await });
-    let share_account = ServerAction::<ShareAccount>::new();
-
-    view! {
-        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
-            <h1 class="font-bold text-4xl">"Accounts"</h1>
-        </div>
-        <Suspense>
-        {move || {
-            let login_state = logged_in.get();
-            let accounts_state = accounts.get();
-            let share_state = share_account.value().get();
-
-            match login_state {
-                None => EitherOf3::A ( view!{
-                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"checking if you are logged in"</p></div>
-                }),
-                Some(Err(_)) => EitherOf3::B( view! {
-                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/login"/></div>
-                }),
-                Some(Ok(_)) => EitherOf3::C( view! {})};
-
-            match accounts_state {
-                None => EitherOf3::A( view! { <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"Loading accounts..."</p></div> }),
-                Some(Err(e)) => EitherOf3::B(
-                    view! { <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"Error loading accounts: " {e.to_string()}</p></div>}),
-                Some(Ok(s)) => EitherOf3::C(
-                    if s.is_empty() {
-                        Either::Left( view! {
-                            <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"No accounts yet. Add one below!"</p>
-                            <AddAccount/>
-                            </div>
-
-                        })
-                        } else {
-                            Either::Right(
-                            view! {
-                                <div class="mx-auto flex min-w-full flex-col items-center">
-                                    <ul>
-                                        {s.into_iter()
-                                            .map(|n| view! {
-                                                <div style=move || if n.2 {
-                                                    "color: red;"
-                                                } else {
-                                                    ""
-                                                }>
-                                                <ActionForm action=share_account>
-                                                <li class = "px-1 py-1 font-bold text-2xl">
-                                                    {n.0}"     "{format!("{}${}.{:02}", if n.1 < 0 {"-"} else {""}, (n.1.abs() / 100), ((n.1).abs() % 100))}
-                                                            <input
-                                                            type = "hidden"
-                                                            name = "account_id"
-                                                            value = 0
-                                                            // TODO: fix the value
-
-                                                            />
-                                                            <input
-                                                                class = "shadow appearance-none border rounded text-gray-700 leading-tight focus:outline-none focus:shadow-outline max-w-xs"
-                                                                type="text"
-                                                                name="username"
-                                                                placeholder = "username"
-                                                                required
-                                                            />
-                                                            <button class="mt-3 rounded bg-purple-900 font-bold text-white hover:bg-blue-400" type="submit">"Share"</button>
-                                                </li></ActionForm></div>})
-                                            .collect_view()}
-                                    </ul>
-                                    <AddAccount/>
-                                    {match share_state{
-                                        Some(Err(e)) => Either::Left( view!{<div class="mx-auto flex min-w-full flex-col items-center"><p>{e.to_string()}</p></div>}),
-                                        _ => Either::Right( view!{} )
-                                    }}
-                                </div>
-                            })
-                        }
-                    )
-            }
-        }}
-        </Suspense>
-    }
-}
-
-#[component]
-fn AddAccount() -> impl IntoView {
-    let add_account = ServerAction::<crate::api::web_api::AddAccount>::new();
+fn AddAccount(user_id: Uuid, journal_id: Uuid) -> impl IntoView {
+    use leptos::either::Either;
+    let add_account = ServerAction::<web_api::AddAccount>::new();
     view! {
             <div class="flex flex-col items-center text-center px-10 py-10">
                 <h1>"Create a new account"</h1>
@@ -312,121 +237,153 @@ fn AddAccount() -> impl IntoView {
                         <input
                             class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                             type="text"
-                            name="title"
+                            name="account_name"
                             required
                         />
+
+                        <input
+                            type = "hidden"
+                            name = "user_id"
+                            value = user_id.to_string()
+                        />
+                        <input
+                            type = "hidden"
+                            name = "journal_id"
+                            value = journal_id.to_string()
+                        />
+
                         <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Add"</button>
                     </ActionForm>
+
+                    {
+                        move || {
+                            match add_account.value().get() {
+                                Some(Err(e)) => Either::Left(view! {
+                                    <p>"An error occured: " {e.to_string()}</p>
+                                }),
+                                _ => Either::Right(view! {()})
+                            }
+                        }
+                    }
+
             </div>
     }
 }
 
 #[component]
-fn Transact() -> impl IntoView {
-    use crate::api::web_api::{get_accounts, is_logged_in, Transact};
-    use leptos::either::{Either, EitherOf3};
-    let items_resource = Resource::new(|| (), |_| async { get_accounts().await });
-    let logged_in_resource = Resource::new(|| (), |_| async { is_logged_in().await });
-    let update_action = ServerAction::<Transact>::new();
+fn AccountList(user_id: Uuid, journals: Journals) -> impl IntoView {
+    use leptos::either::EitherOf4;
+    let accounts_resource = Resource::new(
+        move || (),
+        move |_| async move { web_api::get_accounts(user_id).await },
+    );
 
     view! {
-        <TopBar/>
-        <Suspense fallback=|| view! { <p>"Loading..."</p> }>
-            {move || {
-                let login_state = logged_in_resource.get();
-                let _items_state = items_resource.get();
-
-                match login_state {
-                    None => EitherOf3::A( view! {
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"checking if you are logged in"</p></div>
-                    }),
-                    Some(Err(_)) => EitherOf3::B( view! {
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/login"/></div>
-                    }),
-                    Some(Ok(_)) => EitherOf3::C( view! {}),
-                }
-            }}
-            {move || match logged_in_resource.get() {
-                Some(Err(_)) => EitherOf3::A(
-                    view! {
-                    <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/login"/></div>
+        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4">
+            <h1 class="font-bold text-4xl">"Accounts"</h1>
+        </div>
+        <Suspense>
+        {move || {
+            match accounts_resource.get() {
+                None => EitherOf4::A( view!{
+                    <p>"Unable to fetch accounts..."</p>
                 }),
 
-                None =>  EitherOf3::B( view! {
-                <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"loading accounts..."</p></div>}),
+                Some(Err(e)) => if let Some(KnownErrors::PermissionError{..}) = KnownErrors::parse_error(e.clone()) { EitherOf4::B( view! {
+                    <p>"You do not have the required permissions to view this journal!"</p>
+                }) } else {
+                    EitherOf4::C(view! {<p>"And unknown error occured: " {e.to_string()} </p>} )
+                }
 
-                Some(Ok(_)) => EitherOf3::C(
-                    {items_resource.get().map(|result| {
-                        match result {
-                            Ok(items) => {
-                                if items.len() < 2 {
-                                   return EitherOf3::A(view! {
-                                        <div class="flex flex-col items-center text-center px-10 py-10"><p>"You must have two accounts in order to transact!"</p></div>
-                                    })
-                                }
-                                EitherOf3::B( view! {
-                                    <div class="flex flex-col items-center text-center px-10 py-10">
-                                    <h1 class="font-bold text-4xl">"Make a transaction"</h1>
-                                    <p>"Please enter your values in cents"</p>
-                                    <br/>
-                                    <h2 class = "font-bold text-3xl">"Credit/Debit"</h2>
-                                    <ActionForm action=update_action>
+                Some(Ok(accounts)) => EitherOf4::D(view! {
+                    <div class="mx-auto flex min-w-full flex-col items-center">
 
-                                            {items.into_iter().map(|fields| view!{
-                                                <div class="flex items-center text-center px-10 py-10">
-                                                <label class="block mb-2 font-medium">{fields.0.to_string()}</label>
-
-                                                <br/>
-
-                                                <div class="flex gap-4">
-                                                <input
-                                                name = "acc_ids[]"
-                                                type = "hidden"
-                                                value = fields.1
-                                                />
-
-                                                <input
-                                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                name = "balance_add_cents[]"
-                                                type="number"
-                                                placeholder = "0"/>
-
-                                                <input
-                                                class = "shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                name = "balance_remove_cents[]"
-                                                type="number"
-                                                placeholder = "0"/>
-                                                </div>
-                                            </div>
-
-                                            }).collect_view()}
-
-                                       <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Submit"</button>
-
-                                       <br/>
-
-                                   {move || match update_action.value().get() {
-
-                                           Some(Err(e)) => Either::Left(
-                                               view! {
-                                                   <p>{e.to_string()}</p>
-                                               }),
-
-                                           _ => Either::Right( view! {}),
-
-                                       }
-                                   }
-
-                                    </ActionForm>
-
-                                    </div>
-                                })
-
+                        <ul>
+                            {
+                                accounts.into_iter().map(|account| view! {
+                                    <li class="px-1 py-1 font-bold text-2xl">
+                                        {account.name}"    " {format!("${}.{:02} {}", account.balance.abs()/100, account.balance.abs() % 100, if account.balance < 0 {"Dr"} else {"Cr"})}
+                                    </li>
+                                }).collect_view()
                             }
-                           Err(e) => EitherOf3::C( view! {<div class="flex flex-col items-center text-center px-10 py-10"><p>"Error: "{e.to_string()}</p></div>})
+                        </ul>
+
+                    </div>
+                })
+
+            }
+        }}
+
+        {move || {
+            if let Some(selected) = journals.selected.clone() {
+                match selected {
+                    AssociatedJournal::Owned { id, .. } => EitherOf4::A(view! {<AddAccount user_id=user_id journal_id=id/>}),
+                    AssociatedJournal::Shared { id, tenant_info, .. } => {
+                        if tenant_info.tenant_permissions.contains(Permissions::ADDACCOUNT) {
+                            EitherOf4::B(view! { <AddAccount user_id=user_id journal_id=id/> })
+                        } else {
+                            EitherOf4::C(view! {()})
                         }
-                    })}
-                )
+                    }
+                }
+            } else {
+                EitherOf4::D( view! {()} )
+            }
+        }}
+
+        </Suspense>
+    }
+}
+
+#[component]
+fn HomePage() -> impl IntoView {
+    use leptos::either::EitherOf3;
+
+    let user_id_resource = Resource::new(
+        move || (),
+        |_| async move { web_api::get_user_id_from_session().await },
+    );
+
+    view! {
+        <Suspense>
+        {move || {
+            match user_id_resource.get() {
+                        Some(Ok(user_id)) => {
+                            let journals_resource = Resource::new(
+                                move || (),
+                                move |_| async move { web_api::get_associated_journals(user_id).await },
+                            );
+                            EitherOf3::A(view! {
+                                { move || {
+
+                                    match journals_resource.get() {
+                                        Some(Ok(journals)) => EitherOf3::A(view! {
+                                            <TopBar journals=journals.clone() user_id=user_id/>
+
+                                            <AccountList user_id=user_id journals=journals/>
+                                        }),
+
+                                        Some(Err(e)) => EitherOf3::B(view! {
+                                            <p>"An error occured: " {e.to_string()}</p>
+                                        }),
+
+                                        None => EitherOf3::C(view! {
+                                            <p>"Unable to fetch user id"</p>
+                                        }),
+                                    }
+                                }
+                                }
+                            })
+                        }
+
+                        Some(Err(_)) => EitherOf3::B(view! {<meta http-equiv="refresh" content="0; url=/login"/>}),
+
+                        None => {
+                            EitherOf3::C(view! {
+                                    <p>"Unable to get user id"</p>
+                            })
+                        }
+                    }
             }
         }
         </Suspense>
@@ -434,75 +391,188 @@ fn Transact() -> impl IntoView {
 }
 
 #[component]
-fn GeneralJournal() -> impl IntoView {
-    use crate::api::web_api::{is_logged_in, package_transactions};
-    use chrono::TimeZone;
-    use leptos::either::EitherOf3;
+fn Transact() -> impl IntoView {
+    use leptos::either::{Either, EitherOf8};
+    use web_api::{Transact, get_associated_journals, get_user_id_from_session};
+    let user_id_resource =
+        Resource::new(|| (), |_| async move { get_user_id_from_session().await });
 
-    let transactions_resource = Resource::new(|| (), |_| async { package_transactions().await });
-    let logged_in_resource = Resource::new(|| (), |_| async { is_logged_in().await });
+    let update_action = ServerAction::<Transact>::new();
+
+    view! {
+        <Suspense>
+            {move || {
+                match user_id_resource.get() {
+                    None => EitherOf8::A(view! {<p>"Unable to fetch user id"</p>}),
+
+                    Some(Err(_)) => EitherOf8::B(view! {<meta http-equiv="refresh" content="0; url=/login"/>}),
+
+                    Some(Ok(user_id)) => {
+                        let journals_resource = Resource::new(|| (), move |_| async move {get_associated_journals(user_id).await});
+
+                        match journals_resource.get() {
+                            None => EitherOf8::C(view! {<p>"Unable to fetch journals"</p>}),
+
+                            Some(Err(e)) => EitherOf8::D(view! {<p>"An error occured while fetching journals: " {e.to_string()}</p>}),
+
+                            Some(Ok(journals)) => {
+                                let accounts_resource = Resource::new(|| (), move |_| async move {web_api::get_accounts(user_id).await});
+
+                                match accounts_resource.get() {
+                                    None => EitherOf8::E(view! {<p>"Unable to fetch accounts"</p>}),
+
+                                    Some(Err(e)) => {if let Some(KnownErrors::InvalidJournal) = KnownErrors::parse_error(e.clone()) {
+                                        EitherOf8::F(view! {<p>"Please select a journal!"</p>})} else {
+                                            EitherOf8::G(view! {<p>"An error occured while fetching accounts: " {e.to_string()}</p>})
+                                        }
+                                    },
+
+                                    Some(Ok(accounts)) => EitherOf8::H(view! {
+                                        <TopBar journals=journals.clone() user_id=user_id/>
+                                        <h1 class="font-bold text-4xl">"Transact"</h1>
+                                        <ActionForm action=update_action>
+
+                                        <input
+                                            name="user_id"
+                                            type="hidden"
+                                            value=user_id.to_string()
+                                            />
+
+                                            <input
+                                            name="journal_id"
+                                            type="hidden"
+                                            value=journals.selected.expect("fetching the accounts resource should fail if this value is none").get_id().to_string()
+                                            />
+
+                                            {
+                                                accounts.into_iter().map(|account| view! {
+                                                    <div class="flex items-center text-center px-10 py-10">
+                                                        <label class="block mb-2 font-medium">{account.name.to_string()}</label>
+                                                        <br/>
+                                                        <div class="flex gap-4">
+                                                            <input
+                                                            name="account_names[]"
+                                                            type="hidden"
+                                                            value=account.name.to_string()
+                                                            />
+
+                                                            <input
+                                                            class="shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                            name="balance_add_cents[]"
+                                                            type="number"
+                                                            placeholder="0"
+                                                            />
+
+                                                            <input
+                                                            class="shadow appearance-none border rounded py-2 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                            name="balance_remove_cents[]"
+                                                            type="number"
+                                                            placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                }).collect_view()
+                                            }
+
+                                        <button class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400" type="submit">"Submit"</button>
+                                        <br/>
+
+                                        {
+                                            if let Some(Err(e)) = update_action.value().get() {
+                                                Either::Left(view!{
+                                                    <p>"An error occured while sumbitting your transaction: " {e.to_string()}</p>
+                                                })
+                                            } else {
+                                                Either::Right(view! {()})
+                                            }
+                                        }
+
+                                        </ActionForm>
+                                    })
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }}
+        </Suspense>
+    }
+}
+
+#[component]
+fn GeneralJournal() -> impl IntoView {
+    use crate::main_api::web_api::{
+        get_associated_journals, get_transactions, get_user_id_from_session,
+    };
+    use leptos::either::EitherOf8;
+
+    let user_id_resource =
+        Resource::new(|| (), |_| async move { get_user_id_from_session().await });
 
     view! {
 
-            <TopBar/>
-            <Suspense fallback=|| view! { <p>"Loading transaction history..."</p> }>
-
+        <Suspense>
             {move || {
-                let login_state = logged_in_resource.get();
+                match user_id_resource.get() {
+                    None => EitherOf8::A(view! {<p>"Unable to fetch user id"</p>}),
 
-                match login_state {
-                    None => EitherOf3::A( view! {
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><p>"checking if you are logged in"</p></div>
-                    }),
-                    Some(Err(_)) => EitherOf3::B( view! {
-                        <div class="mx-auto flex min-w-full flex-col items-center px-4 py-4"><meta http-equiv="refresh" content="0; url=/login"/></div>
-                    }),
-                    Some(Ok(_)) => EitherOf3::C( view! {} )
+                    Some(Err(_)) => EitherOf8::B(view! {<meta http-equiv="refresh" content="0; url=/login"/>}),
 
-            }};
+                    Some(Ok(user_id)) => {
+                        let journals_resource = Resource::new(|| (), move |_| async move {get_associated_journals(user_id).await});
+                        match journals_resource.get() {
+                            None => EitherOf8::C(view! {<p>"Unable to fetch journals"</p>}),
 
-            {move || transactions_resource.get().map(|transactions|{
-                   match transactions {
-                       Ok(transactions) => {
-                       if transactions.is_empty() {
-                           EitherOf3::A(
-                           view! {
-                               <div class="flex flex-col items-center text-center px-10 py-10"><p>"no transactions yet"</p></div>
-                           })
-                       } else {
-                       EitherOf3::B( view! {
-                           <div class="flex flex-col items-center text-center px-10 py-10">
-                                <h1 class="font-bold text-4xl">"Transactions"</h1>
-                                <ul>
-                                    {transactions.iter().map(|packaged_transaction| {
-                                         //using utc because we can't get users' timezones without JS
-                                         view! {
-                                        <div class="flex flex-col items-center text-center px-10 py-10">
-                                            <li>
-                                                <h2 font-bold text-xl>
-                                                {chrono::Utc.timestamp_opt(packaged_transaction.0.1, 0).unwrap().to_string()}":"
-                                                </h2>
-                                                <ul>
-                                                    {packaged_transaction.1.iter().map(|partial_transaction| {
-                                                        view! {
-                                                        <li>{"dummy_account".to_string()} " : $" {partial_transaction.1.abs()/100}"."{partial_transaction.1.abs()%100} " " {if partial_transaction.1 < 0 {"Dr".to_string()} else {"Cr".to_string()}} </li>
-                                                        // TODO: USE ACTUAL ACCOUNT NAME
+                            Some(Err(e)) => EitherOf8::D(view! {<p>"An error occured while fetching journals: "{e.to_string()}</p>}),
+
+                            Some(Ok(journals)) => {
+                                if let Some(selected_journal) = &journals.selected {
+                                    let selected = selected_journal.get_id();
+                                    let transactions_resource = Resource::new(|| (), move |_| async move {get_transactions(user_id, selected).await});
+                                    match transactions_resource.get() {
+                                        None => EitherOf8::E(view! {<p>"Unable to fetch transactions"</p>}),
+
+                                        Some(Err(e)) => EitherOf8::F(view! {<p>"An error occured while fetching transactions: "{e.to_string()}</p>}),
+
+                                        Some(Ok(transactions)) => {
+                                            EitherOf8::G(view! {
+                                                <TopBar journals=journals.clone() user_id=user_id/>
+                                                <div class="flex flex-col items-center text-center px-10 py-10">
+                                                    <h1 class="font-bold text-4xl">"General Journal"</h1>
+                                                    <ul>
+                                                        {
+                                                            transactions.into_iter().map(|transaction| view! {
+                                                                <div class="flex flex-col items-center text-center px-10 py-10">
+                                                                    <li>
+                                                                        <h2 class="font-bold text-xl">{DateTime::<chrono::Utc>::from(UNIX_EPOCH.checked_add(Duration::from_secs(transaction.timestamp as u64)).unwrap_or(UNIX_EPOCH)).to_string()}":"</h2>
+                                                                        <br/>
+                                                                        <ul>
+                                                                            {
+                                                                                transaction.transaction.updates.into_iter().map(|update| view! {
+                                                                                    <li>
+                                                                                    {update.account_name} " : $" {update.changed_by.abs()/100} "." {update.changed_by.abs()%100} " " {if update.changed_by < 0 {"Dr".to_string()} else {"Cr".to_string()}}
+                                                                                    </li>
+                                                                                }).collect_view()
+                                                                            }
+                                                                        </ul>
+                                                                    </li>
+                                                                </div>
+                                                            }).collect_view()
                                                         }
-                                                    }).collect_view()}
-                                                </ul>
-                                            </li>
-                                        </div>
+                                                    </ul>
+                                                </div>
+                                            })
                                         }
-                                    }).collect_view()}
-                                </ul>
-                           </div>
-                       })}},
-                       Err(e) => EitherOf3::C( view! {
-                           <div class="flex flex-col items-center text-center px-10 py-10"><p>{e.to_string()}</p></div>
-                       }),
-                   }
-                })}}
-
-            </Suspense>
+                                    }
+                                } else {
+                                    EitherOf8::H(view! {<p>"Please select a journal!"</p>})
+                                }
+                            }
+                        }
+                    }
+                }
+            }}
+        </Suspense>
     }
 }

@@ -11,18 +11,18 @@ pub enum DomainEvent {
 }
 
 impl DomainEvent {
-    pub fn to_user_event(self) -> Result<UserEvent, ServerFnError> {
+    pub fn to_user_event(&self) -> Result<UserEvent, ServerFnError> {
         if let Self::User(s) = self {
-            return Ok(s);
+            return Ok(s.clone());
         }
 
         Err(ServerFnError::ServerError(
             "unable to convert domain event to user event".to_string(),
         ))
     }
-    pub fn to_journal_event(self) -> Result<JournalEvent, ServerFnError> {
+    pub fn to_journal_event(&self) -> Result<JournalEvent, ServerFnError> {
         if let Self::Journal(s) = self {
-            return Ok(s);
+            return Ok(s.clone());
         }
         Err(ServerFnError::ServerError(
             "unable to convert domain event to account event".to_string(),

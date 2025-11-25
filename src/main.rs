@@ -15,30 +15,27 @@ async fn main() {
     use dotenvy::dotenv;
     use leptos::logging::log;
     use leptos::prelude::*;
-    use leptos_axum::{generate_route_list, LeptosRoutes};
+    use leptos_axum::{LeptosRoutes, generate_route_list};
     use sqlx::postgres::PgPoolOptions;
     use sqlx::{Pool, Postgres};
     use std::env;
-    use tower_sessions::{cookie::time::Duration, Expiry, SessionManagerLayer};
+    use tower_sessions::{Expiry, SessionManagerLayer, cookie::time::Duration};
     use tower_sessions_sqlx_store::PostgresStore;
 
-    let conf = get_configuration(None).unwrap();
+    let conf = get_configuration(None).expect("invaid configuration");
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
     // Generate the list of routes in your Leptos App
 
     dotenv().ok();
 
-    let database_url: String = match env::var("DATABASE_URL") {
-        Ok(s) => s,
-        Err(_) => panic!("failed to get database url"),
-    };
+    let database_url: String = env::var("DATABASE_URL").expect("failed to get database url");
 
     let pool: Pool<Postgres> = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await
-        .expect("to be able to connet to the pool");
+        .expect("failed to connect to the postgres pool");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS events (
@@ -52,13 +49,13 @@ async fn main() {
     )
     .execute(&pool)
     .await
-    .expect("to be able to create a table");
+    .expect("failed to create the events table");
 
     let session_store = PostgresStore::new(pool.clone());
     session_store
         .migrate()
         .await
-        .expect("to be able to migrate the session store");
+        .expect("failed to migrate the session store");
 
     let session_layer = SessionManagerLayer::new(session_store)
         .with_expiry(Expiry::OnInactivity(Duration::hours(48)));
@@ -75,10 +72,12 @@ async fn main() {
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     log!("listening on http://{}", &addr);
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("failed to bind the tcp address");
     axum::serve(listener, app.into_make_service())
         .await
-        .unwrap();
+        .expect("failed to serve on the address");
 }
 
 #[cfg(not(feature = "ssr"))]

@@ -1,8 +1,7 @@
-use super::journal::{JournalTenantInfo, SharedAndPendingJournals, SharedJournal};
-use bcrypt::verify;
+use super::journal::JournalTenantInfo;
 use leptos::prelude::ServerFnError;
 use serde::{Deserialize, Serialize};
-use sqlx::{query_scalar, types::JsonValue, PgPool};
+use sqlx::{PgPool, query_scalar, types::JsonValue};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
@@ -10,7 +9,7 @@ use crate::{event_sourcing::journal::Permissions, main_api::return_types::KnownE
 
 use super::event::{AggregateType, DomainEvent, EventType};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type", content = "data")]
 pub enum UserEvent {
     Created {
@@ -105,7 +104,7 @@ impl UserState {
             ORDER BY created_at ASC
             "#,
         )
-        .bind(&id)
+        .bind(id)
         .bind(AggregateType::User)
         .bind(&event_types)
         .fetch_all(pool)
@@ -113,12 +112,13 @@ impl UserState {
 
         let mut aggregate = Self {
             id: *id,
+            selected_journal: Uuid::nil(),
             ..Default::default()
         };
 
         for raw_event in user_events {
             let domain_event: DomainEvent = serde_json::from_value(raw_event)?;
-            aggregate.apply(domain_event.to_user_event()?);
+            aggregate.apply(domain_event.to_user_event()?).await;
         }
         Ok(aggregate)
     }
@@ -202,7 +202,7 @@ pub async fn get_id_from_username(
     )
     .bind(EventType::UserCreated)
     .bind(EventType::UsernameUpdated)
-    .bind(&username)
+    .bind(username)
     .fetch_optional(pool)
     .await?)
 }
@@ -240,9 +240,9 @@ pub async fn get_id_from_session(
         }
     }
 
-    return Err(ServerFnError::ServerError(
+    Err(ServerFnError::ServerError(
         KnownErrors::NotLoggedIn.to_string(),
-    ));
+    ))
 }
 
 pub async fn get_username_from_id(user_id: &Uuid, pool: &PgPool) -> Result<String, ServerFnError> {
@@ -271,35 +271,4 @@ pub async fn get_hashed_pw(user_id: &Uuid, pool: &PgPool) -> Result<String, Serv
     .await?;
 
     Ok(user.hashed_password)
-}
-
-pub async fn is_authenticated(
-    session_id: &String,
-    user_id: &Uuid,
-    pool: &PgPool,
-) -> Result<bool, ServerFnError> {
-    let user = UserState::build(
-        user_id,
-        vec![EventType::UserLoggedIn, EventType::UserLoggedOut],
-        pool,
-    )
-    .await?;
-
-    return Ok(user.authenticated_sessions.contains(session_id));
-}
-
-pub async fn authenticate(
-    session_id: String,
-    user_id: Uuid,
-    password: String,
-    pool: &PgPool,
-) -> Result<bool, ServerFnError> {
-    let verified = verify(password, get_hashed_pw(&user_id, pool).await?.as_str())?;
-    if verified {
-        _ = UserEvent::LoggedIn { session_id }
-            .push_db(&user_id, pool)
-            .await?;
-        return Ok(true);
-    }
-    Ok(false)
 }

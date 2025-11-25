@@ -10,14 +10,19 @@ use crate::event_sourcing::{
 
 #[derive(EnumString, Display)]
 pub enum KnownErrors {
+    None,
+
     SessionIdNotFound,
+
     UsernameNotFound {
         username: String,
     },
+
     LoginFailed {
         username: String,
         password: String,
     },
+
     SignupPasswordMismatch {
         username: String,
     },
@@ -27,6 +32,7 @@ pub enum KnownErrors {
     UserExists {
         username: String,
     },
+
     BalanceMismatch {
         attempted_transaction: Vec<BalanceUpdate>,
     },
@@ -40,33 +46,27 @@ pub enum KnownErrors {
     NoInvitation,
 
     NotLoggedIn,
+
+    InvalidJournal,
 }
 
 impl KnownErrors {
-    pub fn parse_error(error: ServerFnError) -> Result<Self, String> {
-        match error
+    pub fn parse_error(error: ServerFnError) -> Option<Self> {
+        error
             .to_string()
             .trim_start_matches("error running server function: ")
             .parse::<KnownErrors>()
-        {
-            Ok(s) => Ok(s),
-            Err(_) => Err(format!(
-                "An unexpected error occured: {}",
-                error
-                    .to_string()
-                    .trim_start_matches("error running server function: ")
-            )),
-        }
+            .ok()
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Account {
     pub name: String,
     pub balance: i64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum AssociatedJournal {
     Owned {
         id: Uuid,
@@ -79,7 +79,28 @@ pub enum AssociatedJournal {
     },
 }
 
-#[derive(Serialize, Deserialize)]
+impl AssociatedJournal {
+    pub fn get_id(&self) -> Uuid {
+        match self {
+            Self::Owned { id, .. } => *id,
+            Self::Shared { id, .. } => *id,
+        }
+    }
+    pub fn get_name(&self) -> String {
+        match self {
+            Self::Owned { name, .. } => name.clone(),
+            Self::Shared { name, .. } => name.clone(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Journals {
+    pub associated: Vec<AssociatedJournal>,
+    pub selected: Option<AssociatedJournal>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TransactionWithTimeStamp {
     pub transaction: Transaction,
     pub timestamp: i64,

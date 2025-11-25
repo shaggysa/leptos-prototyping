@@ -1,7 +1,7 @@
 [package]
 name = "prototype"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -53,6 +53,10 @@ ssr = [
     "leptos_router/ssr",
 
 ]
+
+[lints.clippy]
+unwrap_used = "deny"
+
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]
 inherits = "release"
