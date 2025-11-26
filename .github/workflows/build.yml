@@ -73,6 +73,9 @@ jobs:
       - name: Install playwright
         run: npm install playwright@latest
 
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Run end-to-end tests
         run: cargo leptos end-to-end
 
