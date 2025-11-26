@@ -559,7 +559,7 @@ fn GeneralJournal() -> impl IntoView {
 
                 let transactions = match transactions_resource.await {
                     Ok(s) => s,
-                    Err(e) => return EitherOf5::D(view! {<p>"An error occued while fetching transactions: "{e.to_string()}</p>})
+                    Err(e) => return EitherOf5::D(view! {<p>"An error occured while fetching transactions: "{e.to_string()}</p>})
                 };
 
                 EitherOf5::E(view! {

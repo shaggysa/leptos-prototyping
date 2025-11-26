@@ -684,6 +684,7 @@ pub async fn get_transactions(
     let user_state = UserState::build(
         &user_id,
         vec![
+            UserCreatedJournal,
             UserInvitedToJournal,
             UserAcceptedJournalInvite,
             UserDeclinedJournalInvite,
