@@ -62,7 +62,7 @@ jobs:
         run: docker tag leptos-prototyping-app:latest double-book:${{ steps.ver.outputs.VERSION }}
 
       - name: Save image to tarball
-        run: docker image save app:${{ steps.ver.outputs.VERSION }} -o double-book-${{ steps.ver.outputs.VERSION }}.tar
+        run: docker image save double-book:${{ steps.ver.outputs.VERSION }} -o double-book-${{ steps.ver.outputs.VERSION }}.tar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
