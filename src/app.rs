@@ -593,7 +593,7 @@ fn GeneralJournal() -> impl IntoView {
                                 transactions.into_iter().map(|transaction| view! {
                                     <div class="flex flex-col items-center text-center px-10 py-10">
                                         <li>
-                                            <h2 class="font-bold text-xl">{transaction.timestamp.to_string()}" by "{transaction.transaction.author}":"</h2>
+                                            <h2 class="font-bold text-xl">{transaction.timestamp.with_timezone(&chrono_tz::America::Chicago).format("%Y-%m-%d %H:%M:%S %Z").to_string()}" by "{transaction.transaction.author}":"</h2>
                                             <br/>
                                             <ul>
                                                 {
