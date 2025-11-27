@@ -593,7 +593,7 @@ fn GeneralJournal() -> impl IntoView {
                                 transactions.into_iter().map(|transaction| view! {
                                     <div class="flex flex-col items-center text-center px-10 py-10">
                                         <li>
-                                            <h2 class="font-bold text-xl">{transaction.timestamp.to_string()}" by "{transaction.transaction.author.to_string()}":"</h2>
+                                            <h2 class="font-bold text-xl">{transaction.timestamp.to_string()}" by "{transaction.transaction.author}":"</h2>
                                             <br/>
                                             <ul>
                                                 {

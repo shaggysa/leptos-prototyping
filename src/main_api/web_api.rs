@@ -666,6 +666,7 @@ pub async fn get_transactions(
     user_id: Result<Uuid, ServerFnError>,
     journals: Result<Journals, ServerFnError>,
 ) -> Result<Vec<TransactionWithTimeStamp>, ServerFnError> {
+    use EventType::*;
     let user_id = user_id?;
     let journal_id = match journals?.selected {
         Some(s) => s.get_id(),
@@ -675,8 +676,6 @@ pub async fn get_transactions(
             ));
         }
     };
-
-    use EventType::*;
 
     let mut bundled_transactions = Vec::new();
     let pool = extensions::get_pool().await?;
@@ -722,8 +721,19 @@ pub async fn get_transactions(
     for raw_transaction in raw_transactions {
         let domain_event: DomainEvent = serde_json::from_value(raw_transaction.0)?;
         if let JournalEvent::AddedEntry { transaction } = domain_event.to_journal_event()? {
+            let author = UserState::build(
+                &transaction.author,
+                vec![UserCreated, UsernameUpdated],
+                &pool,
+            )
+            .await?
+            .username;
+
             bundled_transactions.push(TransactionWithTimeStamp {
-                transaction,
+                transaction: TransactionWithUsername {
+                    author,
+                    updates: transaction.updates,
+                },
                 timestamp: raw_transaction.1,
             })
         }

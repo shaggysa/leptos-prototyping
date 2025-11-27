@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::event_sourcing::{
     journal::JournalTenantInfo,
-    journal::{BalanceUpdate, Permissions, Transaction},
+    journal::{BalanceUpdate, Permissions},
 };
 
 #[derive(Serialize, Deserialize)]
@@ -127,7 +127,13 @@ pub struct JournalInvite {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct TransactionWithUsername {
+    pub author: String,
+    pub updates: Vec<BalanceUpdate>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct TransactionWithTimeStamp {
-    pub transaction: Transaction,
+    pub transaction: TransactionWithUsername,
     pub timestamp: chrono::DateTime<Utc>,
 }
