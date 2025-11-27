@@ -1,4 +1,4 @@
-name: Rust
+name: Build
 
 on:
   push:
@@ -58,20 +58,17 @@ jobs:
       - name: Compose build
         run: docker compose build app
 
-      - name: Tag image
-        run: docker tag leptos-prototyping-app:latest double-book:${{ steps.ver.outputs.VERSION }}
-
       - name: Save image to tarball
-        run: docker image save double-book:${{ steps.ver.outputs.VERSION }} -o double-book-${{ steps.ver.outputs.VERSION }}.tar
+        run: docker image save double-book:latest -o double-book.tar
 
       - name: Compress tarball
-        run: gzip double-book-${{ steps.ver.outputs.VERSION }}.tar
+        run: gzip double-book.tar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: double-book-${{ steps.ver.outputs.VERSION }}
-          path: double-book-${{ steps.ver.outputs.VERSION }}.tar.gz
+          name: double-book
+          path: double-book.tar.gz
 
   test:
     runs-on: ubuntu-latest
