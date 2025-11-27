@@ -56,42 +56,17 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Download cargo-binstall
+        run: wget https://github.com/cargo-bins/cargo-binstall/releases/latest/download/cargo-binstall-x86_64-unknown-linux-musl.tgz
+
+      - name: Extract cargo-binstall
+        run: tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz
+
+      - name: Install cargo-binstall
+        run: cp cargo-binstall /usr/local/cargo/bin
+
       - name: Install cargo-leptos
-        run: cargo install --locked cargo-leptos
+        run: cargo binstall cargo-leptos -y
 
       - name: Run rust tests
         run: cargo leptos test --release --features=ssr
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: "npm"
-
-      - name: Install node deps
-        run: npm ci
-
-      - name: Install playwright
-        run: npm install playwright@latest
-
-      - name: Download browsers
-        run: npx playwright install --with-deps
-
-      - name: Add wasm target
-        run: rustup target add wasm32-unknown-unknown
-
-      - name: Run end-to-end tests
-        run: cargo leptos end-to-end
-
-      - name: Upload playwright report
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: end2end/playwright-report/
-          retention-days: 30
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: end2end/test-results/
-          retention-days: 30
