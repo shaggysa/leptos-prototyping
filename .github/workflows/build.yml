@@ -38,6 +38,38 @@ jobs:
       - name: Run formatter
         run: cargo fmt
 
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Generate version
+        id: ver
+        run: echo "VERSION=build-${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-v2
+
+      - name: Compose build
+        run: docker compose build app
+
+      - name: Tag image
+        run: docker tag app:latest double-book:${{ steps.ver.outputs.VERSION }}
+
+      - name: Save image to tarball
+        run: docker image save app:${{ steps.ver.outputs.VERSION }} -o double-book-${{ steps.ver.outputs.VERSION }}.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: double-book-${{ steps.ver.outputs.VERSION }}
+          path: double-book.tar-${{ steps.ver.outputs.VERSION }}
+
   test:
     runs-on: ubuntu-latest
 
