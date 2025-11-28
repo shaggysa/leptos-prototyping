@@ -16,7 +16,7 @@ curl -sSL -o docker-compose.deploy.yml https://raw.githubusercontent.com/shaggys
 docker compose -f docker-compose.deploy.yml up --pull always
 ```
 
-## Or, you can use the latest pre-release image:
+## Or, you can use the latest pre-release image (created at every commit to main):
 ```
 curl -sSL -o docker-compose.prerelease.yml https://raw.githubusercontent.com/shaggysa/leptos-prototyping/main/docker-compose.deploy.yml
 
@@ -56,6 +56,7 @@ touch .env
 
 echo "POSTGRES_USER=username" >> .env
 echo "POSTGRES_PASSWORD=password" >> .env
+echo "DATABASE_HOST=localhost" >> .env
 echo "POSTGRES_DB=dbname" >> .env
 ```
 

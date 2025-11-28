@@ -34,13 +34,15 @@ async fn main() {
     let password =
         env::var("POSTGRES_PASSWORD").expect("failed to get postgres password from .env");
 
+    let host = env::var("DATABASE_HOST").expect("failed to get database host from .env");
+
     let db = env::var("POSTGRES_DB").expect("failed to get postgres database from .env");
 
     let pool: Pool<Postgres> = PgPoolOptions::new()
         .max_connections(5)
         .connect(&format!(
-            "postgres://{}:{}@localhost:5432/{}",
-            user, password, db
+            "postgres://{}:{}@{}:5432/{}",
+            user, password, host, db
         ))
         .await
         .expect("failed to connect to the postgres pool");
