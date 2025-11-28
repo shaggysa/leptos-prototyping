@@ -9,7 +9,7 @@ services:
       - db-data:/var/lib/postgresql/data
 
   app:
-    image: ghcr.io/shaggysa/double-book:latest
+    image: ghcr.io/shaggysa/double-book:pre-release
 
     ports:
       - "8080:8080"

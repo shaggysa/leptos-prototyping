@@ -13,7 +13,14 @@ echo "POSTGRES_DB=dbname" >> .env
 ```
 curl -sSL -o docker-compose.deploy.yml https://raw.githubusercontent.com/shaggysa/leptos-prototyping/main/docker-compose.deploy.yml
 
-docker compose -f docker-compose.deploy.yml up
+docker compose -f docker-compose.deploy.yml up --pull always
+```
+
+## Or, you can use the latest pre-release image:
+```
+curl -sSL -o docker-compose.prerelease.yml https://raw.githubusercontent.com/shaggysa/leptos-prototyping/main/docker-compose.deploy.yml
+
+docker compose -f docker-compose.prerelease.yml up --pull always
 ```
 
 ### Builds are currently unstable, and database resets will almost certainly be necessary at some point. You can do this with:
