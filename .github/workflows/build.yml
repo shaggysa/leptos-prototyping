@@ -6,7 +6,7 @@ on:
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/double-book
-  VERSION: build-${{ github.sha.substr(0, 8) }}
+  VERSION: build-${{ github.sha }}
 
 jobs:
   build-amd64:
