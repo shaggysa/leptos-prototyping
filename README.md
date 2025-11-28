@@ -18,7 +18,7 @@ docker compose -f docker-compose.deploy.yml up --pull always
 
 ## Or, you can use the latest pre-release image (created at every commit to main):
 ```
-curl -sSL -o docker-compose.prerelease.yml https://raw.githubusercontent.com/shaggysa/leptos-prototyping/main/docker-compose.deploy.yml
+curl -sSL -o docker-compose.prerelease.yml https://raw.githubusercontent.com/shaggysa/leptos-prototyping/main/docker-compose.prerelease.yml
 
 docker compose -f docker-compose.prerelease.yml up --pull always
 ```
