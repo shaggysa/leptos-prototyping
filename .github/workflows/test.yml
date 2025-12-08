@@ -39,14 +39,20 @@ jobs:
       - name: Run formatter
         run: cargo fmt
 
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Setup leptosfmt
+        run: cargo binstall leptosfmt
+
+      - name: Run leptosfmt
+        run: leptosfmt
+
   test:
     runs-on: ubuntu-24.04-arm
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
 
       - name: Install cargo-leptos
         run: cargo binstall cargo-leptos -y
