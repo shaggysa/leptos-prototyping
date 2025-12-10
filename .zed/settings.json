@@ -15,7 +15,11 @@
     "rust-analyzer": {
       "initialization_options": {
         "check": {
-          "overrideCommand": ["cargo", "clippy", "--features=ssr"]
+          "command": "clippy",
+          "arguments": ["--features=ssr"]
+        },
+        "cargo": {
+          "features": ["ssr"]
         }
       }
     }
