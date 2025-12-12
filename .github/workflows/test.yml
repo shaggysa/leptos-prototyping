@@ -21,7 +21,7 @@ jobs:
         run: cargo clippy --features=ssr -- -D warnings
 
   format:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
         run: cargo binstall leptosfmt
 
       - name: Run leptosfmt
-        run: cargo leptosfmt --check .
+        run: leptosfmt --check .
 
   test:
     runs-on: ubuntu-24.04-arm
