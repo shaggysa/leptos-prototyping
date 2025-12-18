@@ -73,7 +73,7 @@ pub struct JournalState {
     pub name: String,
     pub owner: Uuid,
     pub accounts: HashMap<String, i64>,
-    pub transations: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
     pub deleted: bool,
 }
 
@@ -142,7 +142,7 @@ impl JournalState {
                         .entry(balance_update.account_name.clone())
                         .and_modify(|balance| *balance += balance_update.changed_by);
                 }
-                self.transations.push(transaction);
+                self.transactions.push(transaction);
             }
             JournalEvent::Deleted => self.deleted = true,
         }

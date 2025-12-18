@@ -1,9 +1,9 @@
 use super::auth::ClientLogin;
 use super::auth::ClientSignUp;
 use super::home::HomePage;
-use super::journal::GeneralJournal;
 use super::journal::JournalInvites;
 use super::journal::JournalList;
+use super::transaction::GeneralJournal;
 use super::transaction::Transact;
 use leptos::prelude::*;
 use leptos_meta::MetaTags;
@@ -49,11 +49,11 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=|| "Page not found.".into_view()>
                     <Route path=StaticSegment("") view=HomePage />
                     <Route path=StaticSegment("/transact") view=Transact />
-                    <Route path=StaticSegment("/journal") view=GeneralJournal />
+                    <Route path=StaticSegment("/transaction") view=GeneralJournal />
                     <Route path=StaticSegment("/login") view=ClientLogin />
                     <Route path=StaticSegment("/signup") view=ClientSignUp />
                     <Route path=StaticSegment("/invites") view=JournalInvites />
-                    <Route path=StaticSegment("/new_journal") view=JournalList />
+                    <Route path=StaticSegment("/journal") view=JournalList />
                 </Routes>
             </main>
         </Router>

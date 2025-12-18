@@ -1,4 +1,4 @@
-use super::nav::TopBar;
+use super::super::nav::TopBar;
 use crate::api::main_api;
 use crate::api::main_api::get_accounts;
 use crate::api::return_types::*;

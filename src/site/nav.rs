@@ -47,7 +47,7 @@ pub fn TopBar(journals: Journals, user_id: Uuid) -> impl IntoView {
                 "Homepage"
             </a>
             <a
-                href="/journal"
+                href="/transaction"
                 class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3"
             >
                 "Transaction journal"
