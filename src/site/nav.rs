@@ -35,6 +35,12 @@ pub fn TopBar(journals: Journals, user_id: Uuid) -> impl IntoView {
                 })}
             </Suspense>
             <a
+                href="/journal"
+                class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3"
+            >
+                "Go to new design"
+            </a>
+            <a
                 href="/transact"
                 class="mt-3 rounded bg-purple-900 px-2 py-2 font-bold text-white hover:bg-blue-400 mx-3"
             >

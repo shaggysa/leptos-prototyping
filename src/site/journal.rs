@@ -23,10 +23,6 @@ fn journals() -> Vec<Journal> {
 
 #[component]
 pub fn JournalList() -> impl IntoView {
-    use crate::api::main_api::LogOut;
-
-    let logout_action = ServerAction::<LogOut>::new();
-
     view! {
         <div class="min-h-full">
             // Global Navigation Bar
@@ -40,14 +36,12 @@ pub fn JournalList() -> impl IntoView {
                             </span>
                         </div>
                         <div class="flex items-center gap-4">
-                            <ActionForm action=logout_action>
-                                <button
-                                    type="submit"
-                                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
-                                >
-                                    "Sign out"
-                                </button>
-                            </ActionForm>
+                            <a
+                                href="/login"
+                                class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
+                            >
+                                "Sign out"
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -111,12 +105,10 @@ pub fn JournalList() -> impl IntoView {
 
 #[component]
 pub fn JournalDetail() -> impl IntoView {
-    use crate::api::main_api::LogOut;
     use leptos_router::hooks::use_params_map;
 
     let params = use_params_map();
     let journal_id = move || params.get().get("id").unwrap_or_default().to_string();
-    let logout_action = ServerAction::<LogOut>::new();
 
     let journal_name = "Personal";
 
@@ -144,14 +136,12 @@ pub fn JournalDetail() -> impl IntoView {
                                     "Switch"
                                 </a>
                             </div>
-                            <ActionForm action=logout_action>
-                                <button
-                                    type="submit"
-                                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
-                                >
-                                    "Sign out"
-                                </button>
-                            </ActionForm>
+                            <a
+                                href="/login"
+                                class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
+                            >
+                                "Sign out"
+                            </a>
                         </div>
                     </div>
                 </div>
