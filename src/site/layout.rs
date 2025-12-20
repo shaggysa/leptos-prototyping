@@ -6,19 +6,6 @@ pub fn Layout(
     #[prop(optional)] show_switch_link: bool,
     children: Children,
 ) -> impl IntoView {
-    use crate::api::main_api::{LogOut, get_user_id_from_session};
-
-    let logout_action = ServerAction::<LogOut>::new();
-    let user_id_resource =
-        Resource::new(|| (), |_| async move { get_user_id_from_session().await });
-
-    // Handle logout and redirect
-    Effect::new(move |_| {
-        if let Some(Ok(_)) = logout_action.value().get() {
-            window().location().set_href("/login").unwrap();
-        }
-    });
-
     view! {
         <div class="min-h-full">
             // Global Navigation Bar
@@ -47,13 +34,15 @@ pub fn Layout(
                                                     "Switch"
                                                 </a>
                                             }
+                                                .into_any()
                                         } else {
-                                            view! {}
+                                            view! {}.into_any()
                                         }}
                                     </div>
                                 }
+                                    .into_any()
                             } else {
-                                view! {}
+                                view! {}.into_any()
                             }}
                             <a
                                 href="/login"
