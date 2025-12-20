@@ -11,10 +11,10 @@ use leptos_meta::MetaTags;
 use leptos_meta::Stylesheet;
 use leptos_meta::Title;
 use leptos_meta::provide_meta_context;
-use leptos_router::StaticSegment;
 use leptos_router::components::Route;
 use leptos_router::components::Router;
 use leptos_router::components::Routes;
+use leptos_router::path;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -48,14 +48,14 @@ pub fn App() -> impl IntoView {
         <Router>
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("") view=HomePage />
-                    <Route path=StaticSegment("/transact") view=Transact />
-                    <Route path=StaticSegment("/transaction") view=GeneralJournal />
-                    <Route path=StaticSegment("/login") view=ClientLogin />
-                    <Route path=StaticSegment("/signup") view=ClientSignUp />
-                    <Route path=StaticSegment("/invites") view=JournalInvites />
-                    <Route path=StaticSegment("/journal") view=JournalList />
-                    <Route path=StaticSegment("/journal-detail") view=JournalDetail />
+                    <Route path=path!("") view=HomePage />
+                    <Route path=path!("/transact") view=Transact />
+                    <Route path=path!("/transaction") view=GeneralJournal />
+                    <Route path=path!("/login") view=ClientLogin />
+                    <Route path=path!("/signup") view=ClientSignUp />
+                    <Route path=path!("/invites") view=JournalInvites />
+                    <Route path=path!("/journal") view=JournalList />
+                    <Route path=path!("/journal/:id") view=JournalDetail />
                 </Routes>
             </main>
         </Router>
