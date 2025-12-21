@@ -29,7 +29,7 @@ pub fn Layout(
                                                     href=format!("/journal/{}", id)
                                                     class="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                                 >
-                                                    {title}
+                                                    {title.clone()}
                                                 </a>
                                             }
                                                 .into_any()
@@ -52,13 +52,13 @@ pub fn Layout(
                                             }
                                                 .into_any()
                                         } else {
-                                            view! {}.into_any()
+                                            view! { <span></span> }.into_any()
                                         }}
                                     </div>
                                 }
                                     .into_any()
                             } else {
-                                view! {}.into_any()
+                                view! { <div></div> }.into_any()
                             }}
                             <a
                                 href="/login"
