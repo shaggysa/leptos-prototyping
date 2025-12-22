@@ -228,7 +228,7 @@ pub fn TransactionListPage() -> impl IntoView {
                                     <option value="coffee">"Coffee Expense"</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-4 gap-3">
+                            <div class="grid grid-cols-4 gap-2 sm:gap-3">
                                 <div class="col-span-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         "Amount"
@@ -269,7 +269,7 @@ pub fn TransactionListPage() -> impl IntoView {
                                     <option value="coffee">"Coffee Expense"</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-4 gap-3">
+                            <div class="grid grid-cols-4 gap-2 sm:gap-3">
                                 <div class="col-span-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         "Amount"
@@ -310,7 +310,7 @@ pub fn TransactionListPage() -> impl IntoView {
                                     <option value="coffee">"Coffee Expense"</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-4 gap-3">
+                            <div class="grid grid-cols-4 gap-2 sm:gap-3">
                                 <div class="col-span-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         "Amount"
@@ -351,7 +351,7 @@ pub fn TransactionListPage() -> impl IntoView {
                                     <option value="coffee">"Coffee Expense"</option>
                                 </select>
                             </div>
-                            <div class="grid grid-cols-4 gap-3">
+                            <div class="grid grid-cols-4 gap-2 sm:gap-3">
                                 <div class="col-span-3">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         "Amount"
