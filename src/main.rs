@@ -67,7 +67,7 @@ async fn main() {
         "CREATE TABLE IF NOT EXISTS auth_events (
             id BIGSERIAL PRIMARY KEY,
             user_id UUID NOT NULL,
-            session_id CHAR(128) NOT NULL,
+            session_id BYTEA NOT NULL,
             event_type SMALLINT NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )",

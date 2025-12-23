@@ -1,3 +1,4 @@
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use leptos::prelude::ServerFnError;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -19,6 +20,8 @@ impl AuthEvent {
         session_id: &String,
         pool: &PgPool,
     ) -> Result<i64, ServerFnError> {
+        let session_bytes = URL_SAFE_NO_PAD.decode(session_id)?;
+
         let id: i64 = sqlx::query_scalar(
             r#"
             INSERT INTO auth_events (
@@ -31,7 +34,7 @@ impl AuthEvent {
             "#,
         )
         .bind(user_id)
-        .bind(session_id)
+        .bind(session_bytes)
         .bind(self)
         .fetch_one(pool)
         .await?;
@@ -41,6 +44,8 @@ impl AuthEvent {
 }
 
 pub async fn get_user_id(session_id: &String, pool: &PgPool) -> Result<Uuid, ServerFnError> {
+    let session_bytes = URL_SAFE_NO_PAD.decode(session_id)?;
+
     let event: Vec<(Uuid, AuthEvent)> = sqlx::query_as(
         r#"
         SELECT user_id, event_type FROM auth_events
@@ -49,7 +54,7 @@ pub async fn get_user_id(session_id: &String, pool: &PgPool) -> Result<Uuid, Ser
         LIMIT 1
         "#,
     )
-    .bind(session_id)
+    .bind(session_bytes)
     .fetch_all(pool)
     .await?;
 
