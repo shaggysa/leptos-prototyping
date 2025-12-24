@@ -1,5 +1,6 @@
 use super::layout::Layout;
 use super::nav::TopBar;
+use crate::api::main_api;
 use crate::event_sourcing::journal::Permissions;
 use leptos::prelude::*;
 use uuid::Uuid;
@@ -31,25 +32,53 @@ fn journals() -> Vec<Journal> {
 
 #[component]
 pub fn JournalList() -> impl IntoView {
+    let journals_resource = Resource::new(
+        move || (),
+        |_| async move { main_api::get_associated_journals().await },
+    );
+
+    let create_journal = ServerAction::<main_api::CreateJournal>::new();
+
     view! {
         <Layout>
-            {journals()
-                .into_iter()
-                .map(|journal| {
-                    view! {
-                        <a
-                            href=format!("/journal/{}", journal.id)
-                            class="block p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        >
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                                {journal.name}
-                            </h3>
-                        </a>
-                    }
-                })
-                .collect_view()} <hr class="mt-8 mb-6 border-gray-300 dark:border-gray-600" />
+            <Suspense>
+                {move || Suspend::new(async move {
+                    let journals: Vec<(Uuid, String)> = match journals_resource.await {
+                        Ok(s) => {
+                            s.associated
+                                .into_iter()
+                                .map(|journal| (journal.get_id(), journal.get_name()))
+                                .collect()
+                        }
+                        Err(e) => {
+                            return view! {
+                                <p>"An error occurred while fetching journals: " {e.to_string()}</p>
+                            }
+                                .into_any();
+                        }
+                    };
+                    journals
+                        .into_iter()
+                        .map(|journal| {
+
+                            view! {
+                                <a
+                                    href=format!("/journal/{}", journal.0)
+                                    class="block p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                        {journal.1}
+                                    </h3>
+                                </a>
+                            }
+                        })
+                        .collect_view()
+                        .into_any()
+                })} <hr class="mt-8 mb-6 border-gray-300 dark:border-gray-600" />
+            </Suspense>
+
             <div class="mt-10">
-                <form class="space-y-6">
+                <ActionForm action=create_journal attr:class="space-y-6">
                     <div>
                         <label
                             for="journal_name"
@@ -75,7 +104,7 @@ pub fn JournalList() -> impl IntoView {
                             "Create Journal"
                         </button>
                     </div>
-                </form>
+                </ActionForm>
             </div>
         </Layout>
     }
