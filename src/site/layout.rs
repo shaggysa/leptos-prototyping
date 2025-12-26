@@ -1,3 +1,4 @@
+use crate::api::main_api::LogOut;
 use leptos::prelude::*;
 
 #[component]
@@ -7,6 +8,8 @@ pub fn Layout(
     #[prop(optional)] journal_id: Option<String>,
     children: Children,
 ) -> impl IntoView {
+    let logout_action = ServerAction::<LogOut>::new();
+
     view! {
         <div class="min-h-full">
             // Global Navigation Bar
@@ -59,13 +62,14 @@ pub fn Layout(
                                     .into_any()
                             } else {
                                 view! { <div></div> }.into_any()
-                            }}
-                            <a
-                                href="/login"
-                                class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
-                            >
-                                "Sign out"
-                            </a>
+                            }} <ActionForm action=logout_action>
+                                <button
+                                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1"
+                                    type="submit"
+                                >
+                                    "Sign out"
+                                </button>
+                            </ActionForm>
                         </div>
                     </div>
                 </div>
