@@ -42,7 +42,8 @@ pub fn JournalList() -> impl IntoView {
         <Layout>
             <Suspense>
                 {move || Suspend::new(async move {
-                    let journals: Vec<(Uuid, String)> = match journals_resource.await {
+                    let journals_res = journals_resource.await;
+                    let journals: Vec<(Uuid, String)> = match journals_res.clone() {
                         Ok(s) => {
                             s.associated
                                 .into_iter()
@@ -51,8 +52,9 @@ pub fn JournalList() -> impl IntoView {
                         }
                         Err(e) => {
                             return view! {
+                                <LoginRedirect res=journals_res />
+
                                 <p>"An error occurred while fetching journals: " {e.to_string()}</p>
-                                <LoginRedirect err=e />
                             }
                                 .into_any();
                         }
@@ -125,10 +127,14 @@ pub fn JournalDetail() -> impl IntoView {
         <Suspense>
             {move || Suspend::new(async move {
                 let journal_id = move || params.get().get("id").unwrap_or_default().to_string();
-                let journals = match journals_resource.await {
+                let journals_res = journals_resource.await;
+                let journals = match journals_res.clone() {
                     Ok(s) => s,
                     Err(e) => {
-                        return view! {
+                        return 
+                        view! {
+                            <LoginRedirect res=journals_res />
+
                             "An error occurred while fetching journals: "
                             {e.to_string()}
                         }
