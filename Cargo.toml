@@ -55,7 +55,6 @@ ssr = [
     "leptos_router/ssr",
 
 ]
-tower-http = ["dep:tower-http"]
 
 [lints.clippy]
 unwrap_used = "deny"
