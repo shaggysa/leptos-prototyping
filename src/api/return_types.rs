@@ -58,7 +58,7 @@ impl KnownErrors {
         serde_json::to_string(self)
     }
 
-    pub fn parse_error(error: ServerFnError) -> Option<Self> {
+    pub fn parse_error(error: &ServerFnError) -> Option<Self> {
         serde_json::from_str(
             error
                 .to_string()

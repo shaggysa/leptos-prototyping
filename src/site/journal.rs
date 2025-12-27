@@ -1,5 +1,5 @@
+use super::handle_error::HandleError;
 use super::layout::Layout;
-use super::loginredirect::LoginRedirect;
 use crate::api::main_api;
 use leptos::prelude::*;
 use uuid::Uuid;
@@ -39,8 +39,6 @@ pub fn JournalList() -> impl IntoView {
     let create_journal = ServerAction::<main_api::CreateJournal>::new();
 
     view! {
-        <LoginRedirect />
-
         <Layout>
             <Suspense>
                 {move || Suspend::new(async move {
@@ -52,12 +50,7 @@ pub fn JournalList() -> impl IntoView {
                                 .map(|journal| (journal.get_id(), journal.get_name()))
                                 .collect()
                         }
-                        Err(e) => {
-                            return view! {
-                                <p>"An error occurred while fetching journals: " {e.to_string()}</p>
-                            }
-                                .into_any();
-                        }
+                        Err(e) => return HandleError(e, "test".to_string()).into_any(),
                     };
                     journals
                         .into_iter()
@@ -124,8 +117,6 @@ pub fn JournalDetail() -> impl IntoView {
     );
 
     view! {
-        <LoginRedirect />
-
         <Suspense>
             {move || Suspend::new(async move {
                 let journal_id = move || params.get().get("id").unwrap_or_default().to_string();
@@ -133,11 +124,7 @@ pub fn JournalDetail() -> impl IntoView {
                 let journals = match journals_res.clone() {
                     Ok(s) => s,
                     Err(e) => {
-                        return view! {
-                            "An error occurred while fetching journals: "
-                            {e.to_string()}
-                        }
-                            .into_any();
+                        return HandleError(e, "fetching journals".to_string()).into_any();
                     }
                 };
                 let Some(journal) = journals
