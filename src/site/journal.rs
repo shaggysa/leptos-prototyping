@@ -121,38 +121,33 @@ pub fn JournalDetail() -> impl IntoView {
     );
 
     view! {
-        <Suspense>
-            {move || Suspend::new(async move {
-                let journal_id = move || params.get().get("id").unwrap_or_default().to_string();
-                let journals_res = journals_resource.await;
-                let journals = match journals_res.clone() {
-                    Ok(s) => s,
-                    Err(e) => {
-                        return view! {
-                            "An error occurred while fetching journals: "
-                            {e.to_string()}
+        <Layout show_switch_link=true>
+            <Suspense>
+                {move || Suspend::new(async move {
+                    let journal_id = move || params.get().get("id").unwrap_or_default().to_string();
+                    let journals_res = journals_resource.await;
+                    let journals = match journals_res.clone() {
+                        Ok(s) => s,
+                        Err(e) => {
+                            return view! {
+                                "An error occurred while fetching journals: "
+                                {e.to_string()}
+                            }
+                                .into_any();
                         }
-                            .into_any();
-                    }
-                };
-                let Some(journal) = journals
-                    .associated
-                    .into_iter()
-                    .find(|j| j.get_id().to_string() == journal_id()) else {
-                    return view! { <p>"Unable to find journal"</p> }.into_any()
-                };
-                let journal_owner_resource = Resource::new(
-                    move || (),
-                    move |_| async move { main_api::get_journal_owner(journal_id()).await },
-                );
-                let journal_owner = journal_owner_resource.await;
-                view! {
-                    <Layout
-                        page_title=journal.clone().get_name()
-                        show_switch_link=true
-                        journal_id=journal_id()
-                    >
-
+                    };
+                    let Some(journal) = journals
+                        .associated
+                        .into_iter()
+                        .find(|j| j.get_id().to_string() == journal_id()) else {
+                        return view! { <p>"Unable to find journal"</p> }.into_any()
+                    };
+                    let journal_owner_resource = Resource::new(
+                        move || (),
+                        move |_| async move { main_api::get_journal_owner(journal_id()).await },
+                    );
+                    let journal_owner = journal_owner_resource.await;
+                    view! {
                         <a
                             href=format!("/{}/transaction", journal_id())
                             class="block p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -197,11 +192,10 @@ pub fn JournalDetail() -> impl IntoView {
                                 </div>
                             </div>
                         </div>
-
-                    </Layout>
-                }
-                    .into_any()
-            })}
-        </Suspense>
+                    }
+                        .into_any()
+                })}
+            </Suspense>
+        </Layout>
     }
 }
